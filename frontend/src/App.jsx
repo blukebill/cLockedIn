@@ -3,8 +3,6 @@ import Login from './pages/Login'
 import './App.css'
 import ScheduleGrid from './components/ScheduleGrid'
 
-const employees = ['Alice', 'Bob', 'Carlos']
-
 function App() {
   const [role, setRole] = useState(null)
 
@@ -16,7 +14,7 @@ function App() {
     return (
       <>
         <h1>Manager Dashboard</h1>
-        <ScheduleGrid />
+        <ScheduleGrid role={role} />
         <PublishButton />
       </>
     )
@@ -26,7 +24,7 @@ function App() {
     return (
       <>
         <h1>Employee Dashboard</h1>
-        <ScheduleGrid />
+        <ScheduleGrid role={role} />
       </>
     )
   }
@@ -39,16 +37,6 @@ function PublishButton() {
     <button onClick={() => setPublished(true)}>
       {published ? 'Schedule Published' : 'Publish Schedule?'}
     </button>
-  )
-}
-
-function EmployeeList() {
-  return (
-    <ul>
-      {employees.map(name => (
-        <li key={name}>{name}</li>
-      ))}
-    </ul>
   )
 }
 
