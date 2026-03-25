@@ -9,6 +9,7 @@ function App() {
     <div>
       <h1>cLockedIn</h1>
       <ScheduleGrid />
+      <PublishButton />
     </div>
   )
 }
