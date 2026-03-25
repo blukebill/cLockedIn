@@ -1,17 +1,35 @@
 import { useState } from 'react'
+import Login from './pages/Login'
 import './App.css'
-import ScheduleGrid from './ScheduleGrid'
+import ScheduleGrid from './components/ScheduleGrid'
 
 const employees = ['Alice', 'Bob', 'Carlos']
 
 function App() {
-  return (
-    <div>
-      <h1>cLockedIn</h1>
-      <ScheduleGrid />
-      <PublishButton />
-    </div>
-  )
+  const [role, setRole] = useState(null)
+
+  if (role === null) {
+    return <Login onLogin={setRole} />
+  }
+
+  if (role === 'manager') {
+    return (
+      <>
+        <h1>Manager Dashboard</h1>
+        <ScheduleGrid />
+        <PublishButton />
+      </>
+    )
+  }
+
+  if (role === 'employee') {
+    return (
+      <>
+        <h1>Employee Dashboard</h1>
+        <ScheduleGrid />
+      </>
+    )
+  }
 }
 
 function PublishButton() {
