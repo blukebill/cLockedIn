@@ -3,19 +3,12 @@ import { roleColors } from "../constants/roleColors"
 import { getWeekDates, parseShiftStart, parseShiftEnd, calculateHours } from "../utils/scheduleUtils";
 
 const DEMO_MANAGER = 'Tony N.'
-console.log('all employees:', [...new Set(scheduleData.map(s => s.employee))])
-console.log('lookng for:', DEMO_MANAGER)
-console.log('match test:', scheduleData[0].employee === DEMO_MANAGER)
-console.log('scheduleData length:', scheduleData.length)
-console.log('first entry:', scheduleData[0])
-
 
 function ManagerDashboard({ setPage }) {
     const weekDates = getWeekDates()
     const now = new Date()
 
     const myShifts = scheduleData.filter(s => s.employee === DEMO_MANAGER)
-    console.log('Tony shifts:', myShifts)
 
     const totalPersonalHours = myShifts.reduce((sum, shift) => {
         return sum + calculateHours(shift.startTime, shift.endTime)

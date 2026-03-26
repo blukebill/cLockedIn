@@ -169,9 +169,19 @@ const RoleRowView = ({ roles }) => (
   </div>
 )
 
-function ScheduleGrid({ role }) {
+function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPublished }) {
   const [view, setView] = useState('list')
   const [weekOffset, setWeekOffset] = useState(0)
+  const [showModal, setShowModal] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleGenerate = () => {
+    setIsLoading(true)
+    setTimeout(() => {
+      setIsLoading(false)
+      setIsGenerated(true)
+    }, 2000)
+  }
 
   const employees = [...new Set(scheduleData.map(shift => shift.employee))].sort()
 
@@ -193,32 +203,201 @@ function ScheduleGrid({ role }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-        <button onClick={() => setWeekOffset(weekOffset - 1)}>←</button>
-        <span>{getWeekLabel()}</span>
-        <button onClick={() => setWeekOffset(weekOffset + 1)}>→</button>
-      </div>
+      {/* Generate screen — shows when schedule hasn't been generated yet */}
+      {!isGenerated && (
+        <div style={{ maxWidth: '560px', margin: '0 auto', textAlign: 'center', paddingTop: '48px' }}>
+          <h2 style={{ marginBottom: '8px' }}>Generate Schedule</h2>
+          <p style={{ color: '#888', marginBottom: '32px', fontSize: '14px' }}>
+            Review the inputs below and click Generate to produce this week's schedule.
+          </p>
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-        <button onClick={() => setView('list')}
-          style={{ fontWeight: view === 'list' ? 'bold' : 'normal' }}>
-          List View
-        </button>
-        <button onClick={() => setView('employee')}
-          style={{ fontWeight: view === 'employee' ? 'bold' : 'normal' }}>
-          Week View
-        </button>
-        {role === 'manager' && (
-          <button onClick={() => setView('role')}
-            style={{ fontWeight: view === 'role' ? 'bold' : 'normal' }}>
-            Role View
-          </button>
-        )}
-      </div>
+          {/* Inputs */}
+          <div style={{ textAlign: 'left', marginBottom: '32px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', color: '#666', display: 'block', marginBottom: '6px' }}>
+                Week
+              </label>
+              <input
+                type="text"
+                defaultValue="Mar 24 - Mar 30, 2026"
+                style={{
+                  width: '100%', padding: '10px 12px', borderRadius: '8px',
+                  border: '1px solid #e0e0e0', fontSize: '14px', boxSizing: 'border-box'
+                }}
+              />
+            </div>
 
-      {view === 'list' && <ListView getShifts={getShifts} />}
-      {view === 'employee' && <EmployeeRowView employees={employees} />}
-      {view === 'role' && <RoleRowView roles={roles} />}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', color: '#666', display: 'block', marginBottom: '6px' }}>
+                Projected weekly sales
+              </label>
+              <input
+                type="text"
+                defaultValue="$24,500"
+                style={{
+                  width: '100%', padding: '10px 12px', borderRadius: '8px',
+                  border: '1px solid #e0e0e0', fontSize: '14px', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', color: '#666', display: 'block', marginBottom: '6px' }}>
+                Staffing rules
+              </label>
+              <input
+                type="text"
+                defaultValue="Standard coverage — weekday/weekend split"
+                style={{
+                  width: '100%', padding: '10px 12px', borderRadius: '8px',
+                  border: '1px solid #e0e0e0', fontSize: '14px', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', color: '#666', display: 'block', marginBottom: '6px' }}>
+                Notes
+              </label>
+              <textarea
+                defaultValue="Bar closed Sunday. Shift Lead required Fri/Sat evenings."
+                style={{
+                  width: '100%', padding: '10px 12px', borderRadius: '8px',
+                  border: '1px solid #e0e0e0', fontSize: '14px',
+                  boxSizing: 'border-box', height: '80px', resize: 'none'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Generate button */}
+          {isLoading ? (
+            <div style={{ fontSize: '14px', color: '#888' }}>
+              ⏳ Generating schedule...
+            </div>
+          ) : (
+            <button
+              onClick={handleGenerate}
+              style={{
+                backgroundColor: '#000', color: '#fff',
+                border: 'none', borderRadius: '8px',
+                padding: '12px 32px', fontSize: '15px',
+                cursor: 'pointer', fontWeight: '500'
+              }}
+            >
+              Generate Schedule
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Schedule — shows after generation */}
+      {isGenerated && (
+        <div>
+          {/* Week navigation */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <button onClick={() => setWeekOffset(weekOffset - 1)}>←</button>
+              <span>{getWeekLabel()}</span>
+              <button onClick={() => setWeekOffset(weekOffset + 1)}>→</button>
+            </div>
+
+            {/* Publish button — manager only */}
+            {role === 'manager' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {isPublished && (
+                  <span style={{
+                    backgroundColor: '#4CAF50', color: '#fff',
+                    padding: '4px 12px', borderRadius: '20px', fontSize: '13px'
+                  }}>
+                    ✓ Published
+                  </span>
+                )}
+                {!isPublished && (
+                  <button
+                    onClick={() => setShowModal(true)}
+                    style={{
+                      backgroundColor: '#000', color: '#fff',
+                      border: 'none', borderRadius: '8px',
+                      padding: '8px 20px', fontSize: '14px',
+                      cursor: 'pointer', fontWeight: '500'
+                    }}
+                  >
+                    Publish Schedule
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* View toggle */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+            <button onClick={() => setView('list')}
+              style={{ fontWeight: view === 'list' ? 'bold' : 'normal' }}>
+              List View
+            </button>
+            <button onClick={() => setView('employee')}
+              style={{ fontWeight: view === 'employee' ? 'bold' : 'normal' }}>
+              Week View
+            </button>
+            {role === 'manager' && (
+              <button onClick={() => setView('role')}
+                style={{ fontWeight: view === 'role' ? 'bold' : 'normal' }}>
+                Role View
+              </button>
+            )}
+          </div>
+
+          {view === 'list' && <ListView getShifts={getShifts} />}
+          {view === 'employee' && <EmployeeRowView employees={employees} />}
+          {view === 'role' && <RoleRowView roles={roles} />}
+        </div>
+      )}
+
+      {/* Confirmation modal */}
+      {showModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: '#fff', borderRadius: '12px',
+            padding: '32px', maxWidth: '400px', width: '100%', textAlign: 'center'
+          }}>
+            <h2 style={{ margin: '0 0 8px' }}>Publish Schedule?</h2>
+            <p style={{ color: '#888', fontSize: '14px', margin: '0 0 24px' }}>
+              This will notify all employees of the schedule for the week of Mar 24 - Mar 30, 2026.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                onClick={() => setShowModal(false)}
+                style={{
+                  padding: '10px 24px', borderRadius: '8px',
+                  border: '1px solid #e0e0e0', backgroundColor: '#fff',
+                  fontSize: '14px', cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setIsPublished(true)
+                  setShowModal(false)
+                }}
+                style={{
+                  padding: '10px 24px', borderRadius: '8px',
+                  border: 'none', backgroundColor: '#000', color: '#fff',
+                  fontSize: '14px', cursor: 'pointer', fontWeight: '500'
+                }}
+              >
+                Publish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
