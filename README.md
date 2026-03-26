@@ -31,3 +31,9 @@ NOTE:
 installing deps so far:
   chmod +x setupd.sh
   ./setup.sh
+
+
+For frontend setup/testing (localhost):
+  open terminal and run 'npm run dev'
+  npm will return a localhost port (default: 5173)
+  visit the destination in web browser
