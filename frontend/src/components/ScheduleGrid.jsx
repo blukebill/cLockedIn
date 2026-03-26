@@ -204,7 +204,7 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
   return (
     <div>
       {/* Generate screen — shows when schedule hasn't been generated yet */}
-      {!isGenerated && (
+      {!isGenerated && role === 'manager' && (
         <div style={{ maxWidth: '560px', margin: '0 auto', textAlign: 'center', paddingTop: '48px' }}>
           <h2 style={{ marginBottom: '8px' }}>Generate Schedule</h2>
           <p style={{ color: '#888', marginBottom: '32px', fontSize: '14px' }}>
@@ -289,6 +289,12 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
             </button>
           )}
         </div>
+      )}
+
+      {!isGenerated && role === 'employee' && (
+        <p style={{ color: '#888', fontSize: '14px' }}>
+          No schedule has been posted yet. Check back soon!
+        </p>
       )}
 
       {/* Schedule — shows after generation */}
