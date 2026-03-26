@@ -3,5 +3,6 @@ export const roleColors = {
     Host: '#7B68EE',
     Cook: '#E8A838',
     Bartender: '#1D9E75',
-    'Shift Lead': '#E85D4A'
+    'Shift Lead': '#E85D4A',
+    Manager: '#5D6D7E'
 }

@@ -66,8 +66,14 @@ const EmployeeRowView = ({ employees }) => (
           <tr key={employee}>
             <td style={{ padding: '8px', borderBottom: '1px solid #ccc', whiteSpace: 'nowrap' }}>{employee}</td>
             {days.map(day => {
-              const morning = scheduleData.find(s => s.employee === employee && s.day === day && s.startTime === '10:00 AM')
-              const evening = scheduleData.find(s => s.employee === employee && s.day === day && s.startTime === '4:00 PM')
+              const morning = scheduleData.find(s => {
+                if (s.employee !== employee || s.day !== day) return false
+                return s.startTime.split(' ')[1] === 'AM'
+              })
+              const evening = scheduleData.find(s => {
+                if (s.employee !== employee || s.day !== day) return false
+                return s.startTime.split(' ')[1] === 'PM'
+              })
               return (
                 <td key={day} style={{ padding: '4px', borderBottom: '1px solid #ccc', verticalAlign: 'top', minWidth: '90px' }}>
                   {morning && (
@@ -80,7 +86,7 @@ const EmployeeRowView = ({ employees }) => (
                       marginBottom: evening ? '2px' : '0'
                     }}>
                       <div>{morning.role}</div>
-                      <div style={{ opacity: 0.85 }}>10AM-4PM</div>
+                      <div style={{ opacity: 0.85 }}>{morning.startTime} - {morning.endTime}</div>
                     </div>
                   )}
                   {evening && (
@@ -92,7 +98,7 @@ const EmployeeRowView = ({ employees }) => (
                       fontSize: '11px'
                     }}>
                       <div>{evening.role}</div>
-                      <div style={{ opacity: 0.85 }}>4PM-10PM</div>
+                      <div style={{ opacity: 0.85 }}>{evening.startTime} - {evening.endTime}</div>
                     </div>
                   )}
                 </td>
@@ -117,22 +123,28 @@ const RoleRowView = ({ roles }) => (
         </tr>
       </thead>
       <tbody>
-        {roles.map(role => (
-          <tr key={role}>
+        {roles.map(roleName => (
+          <tr key={roleName}>
             <td style={{ padding: '8px', borderBottom: '1px solid #ccc', whiteSpace: 'nowrap' }}>
               <span style={{
-                backgroundColor: roleColors[role],
+                backgroundColor: roleColors[roleName],
                 color: '#fff',
                 padding: '2px 8px',
                 borderRadius: '4px',
                 fontSize: '12px'
               }}>
-                {role}
+                {roleName}
               </span>
             </td>
             {days.map(day => {
-              const morning = scheduleData.filter(s => s.role === role && s.day === day && s.startTime === '10:00 AM')
-              const evening = scheduleData.filter(s => s.role === role && s.day === day && s.startTime === '4:00 PM')
+              const morning = scheduleData.filter(s => {
+                if (s.role !== roleName || s.day !== day) return false
+                return s.startTime.split(' ')[1] === 'AM'
+              })
+              const evening = scheduleData.filter(s => {
+                if (s.role !== roleName || s.day !== day) return false
+                return s.startTime.split(' ')[1] === 'PM'
+              })
               return (
                 <td key={day} style={{ padding: '4px', borderBottom: '1px solid #ccc', verticalAlign: 'top', minWidth: '90px' }}>
                   <div style={{ borderBottom: '1px solid #eee', paddingBottom: '4px', marginBottom: '4px' }}>
@@ -161,8 +173,10 @@ function ScheduleGrid({ role }) {
   const [view, setView] = useState('list')
   const [weekOffset, setWeekOffset] = useState(0)
 
-  const employees = [...new Set(scheduleData.map(shift => shift.employee))]
-  const roles = [...new Set(scheduleData.map(shift => shift.role))]
+  const employees = [...new Set(scheduleData.map(shift => shift.employee))].sort()
+
+  const roleOrder = ['Manager', 'Shift Lead', 'Cook', 'Host', 'Server', 'Bartender']
+  const roles = [...new Set(scheduleData.map(shift => shift.role))].sort((a, b) => roleOrder.indexOf(a) - roleOrder.indexOf(b))
 
   const getWeekLabel = () => {
     const start = new Date()
