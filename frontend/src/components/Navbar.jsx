@@ -15,14 +15,12 @@ function Navbar({ page, setPage, role, onLogout }) {
       zIndex: 100
     }}>
       {/* Logo */}
-      <div style={{
-        fontWeight: '700',
-        fontSize: '18px',
-        letterSpacing: '-0.5px',
-        cursor: 'pointer'
-      }} onClick={() => setPage('dashboard')}>
-        cLockedIn
-      </div>
+      <img
+        src="/clockedin-logo.svg"
+        alt="cLockedIn"
+        onClick={() => setPage('dashboard')}
+        style={{ height: '64px', width: 'auto', cursor: 'pointer'}}
+      />
 
       {/* Nav links */}
       <div style={{ display: 'flex', gap: '8px' }}>
