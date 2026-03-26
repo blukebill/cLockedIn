@@ -291,14 +291,14 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
         </div>
       )}
 
-      {!isGenerated && role === 'employee' && (
+      {(!isGenerated || !isPublished) && role === 'employee' && (
         <p style={{ color: '#888', fontSize: '14px' }}>
           No schedule has been posted yet. Check back soon!
         </p>
       )}
 
       {/* Schedule — shows after generation */}
-      {isGenerated && (
+      {isGenerated && ( role === 'manager' || isPublished) && (
         <div>
           {/* Week navigation */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
