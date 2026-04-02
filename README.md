@@ -45,6 +45,6 @@ For frontend setup/testing (localhost):
   "Tailwind CSS IntelliSense" by Tailwind Labs
   "GitLens - Git supercharged" by GitKraken
 
-  open terminal and run 'npm run dev'
+  open terminal, navigate to frotnend folder ('cd frontend') and run 'npm run dev'
   npm will return a localhost port (default: 5173)
-  visit the destination in web browser
+  visit the destination in web browser (http://localhost:5173)
