@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 160" width="420" height="160">
+  <defs>
+    <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#16a34a"/>
+      <stop offset="100%" style="stop-color:#4ade80"/>
+    </linearGradient>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&amp;display=swap');
+      .brand { font-family: 'Nunito', 'Verdana', sans-serif; font-weight: 800; }
+      .sub   { font-family: 'Nunito', 'Verdana', sans-serif; font-weight: 700; }
+    </style>
+  </defs>
+
+  <!-- Soft background circle -->
+  <circle cx="80" cy="80" r="58" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="2"/>
+
+  <!--
+    Nearly-full circular arrow arc, clockwise.
+    Radius = 60, center = (80, 80)
+
+    Start: 95°  => x = 80 + 60*cos(95°)  = 80 - 5.23  = 74.77
+                   y = 80 + 60*sin(95°)  = 80 + 59.77 = 139.77
+    End:   85°  => x = 80 + 60*cos(85°)  = 80 + 5.23  = 85.23
+                   y = 80 + 60*sin(85°)  = 80 + 59.77 = 139.77
+
+    large-arc=1, sweep=1 (clockwise)
+  -->
+  <path d="M 74.77 139.77 A 60 60 0 1 1 85.23 139.77"
+        fill="none"
+        stroke="url(#arcGrad)"
+        stroke-width="7"
+        stroke-linecap="round"/>
+
+  <!--
+    Arrowhead at end of arc (angle 85°, clockwise).
+    Clockwise tangent at angle θ points in direction θ + 90°.
+    At 85°: tangent direction = 175°.
+
+    cos(175°) = -0.9962, sin(175°) = 0.0872
+
+    Tip: (85.23, 139.77)
+    We place an upward-pointing triangle and rotate it to match tangent 175°.
+    SVG rotation: rotate(degrees) where 0° = up, so rotate by 175°.
+    But SVG rotate(0) points along +x axis for polygon — let's be explicit:
+    polygon "0,-11 7,5 -7,5" points UP by default (tip at top).
+    rotate(175) will flip it to point roughly left+slightly down — that's 175° from up.
+    Actually: SVG rotate(angle) rotates clockwise from the +x axis default.
+    "Up" in SVG = -y direction = 270° in standard coords.
+    To point in standard angle 175°: SVG rotate = 175 - 270 + 360 = 265°... 
+    
+    Easier: just use transform to align manually.
+    Tangent direction at 85° clockwise = (cos(175°), sin(175°)) = (-0.9962, 0.0872)
+    We want arrowhead tip pointing in direction (-0.9962, 0.0872).
+    
+    Using rotate on the group: rotate(deg, cx, cy) where deg is SVG clockwise degrees.
+    Our polygon tip points at (0, -1) by default = "up" = angle -90° in SVG coords.
+    We want it pointing at SVG angle = atan2(0.0872, -0.9962) = ~175° from +x.
+    SVG clockwise from +x: 175°.
+    From "up" (-90°) to 175°: rotate by 175 - (-90) = 265°.
+  -->
+  <g transform="translate(85.23, 139.77) rotate(265)">
+    <polygon points="0,-11 7,5 -7,5" fill="#16a34a"/>
+  </g>
+
+  <!-- Tick marks -->
+  <g stroke="#86efac" stroke-width="2" stroke-linecap="round">
+    <line x1="80" y1="24" x2="80" y2="33"/>
+    <line x1="136" y1="80" x2="127" y2="80"/>
+    <line x1="80" y1="136" x2="80" y2="127"/>
+    <line x1="24" y1="80"  x2="33" y2="80"/>
+  </g>
+
+  <!-- Hour hand pointing to ~10 -->
+  <line x1="80" y1="80" x2="51" y2="50" stroke="#14532d" stroke-width="5" stroke-linecap="round"/>
+  <!-- Minute hand pointing to ~12 -->
+  <line x1="80" y1="80" x2="88" y2="27" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Center dot -->
+  <circle cx="80" cy="80" r="5.5" fill="#14532d"/>
+
+  <!-- Brand name -->
+  <text x="158" y="75" class="brand" font-size="44" letter-spacing="-0.5">
+    <tspan fill="#14532d">c</tspan><tspan fill="#16a34a">L</tspan><tspan fill="#14532d">ocked</tspan><tspan fill="#16a34a">In</tspan>
+  </text>
+
+  <!-- Tagline -->
+  <text x="162" y="102" class="sub" font-size="13" fill="#4ade80" letter-spacing="3.5">SCHEDULING</text>
+</svg>
