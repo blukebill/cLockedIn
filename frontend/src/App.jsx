@@ -12,10 +12,13 @@ function App() {
   const [page, setPage] = useState('dashboard')
   const [isPublished, setIsPublished] = useState(false)
   const [isGenerated, setIsGenerated] = useState(false)
+  const [publishedWeek, setPublishedWeek] = useState ('')
+  const [isBannerDismissed, setIsBannerDismissed] = useState(false)
 
   const handleLogout = () => {
     setRole(null)
     setPage('dashboard')
+    setIsBannerDismissed(false)
   }
 
   if (role === null) {
@@ -23,26 +26,26 @@ function App() {
   }
 
   return (
-    <div>
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <Navbar page={page} setPage={setPage} role={role} onLogout={handleLogout} />
       
       {/* Notification Banner - only shows for employees after publish */}
-      {isPublished && role === 'employee' && (
-        <div style={{
-          backgroundColor: '#4CAF50',
-          color: '#fff',
-          padding: '12px 24px',
-          fontSize: '14px',
-          textAlign: 'center'
-        }}>
-          A new schedule for {new Date().toLocaleDateString('en-US', { month: 'long' })} has been posted. Check your schedule!
+      {isPublished && role === 'employee' && !isBannerDismissed && (
+        <div className="bg-green-600 text-white px-6 py-3 text-sm flex items-center justify-between">
+          <span> A new schedule for {publishedWeek} has been posted. Check your schedule!</span>
+          <button
+            onClick={() => setIsBannerDismissed(true)}
+            className="text-white hover:text-green-200 transition-colors ml-4 text-lg leading-none"
+          >
+            ✕
+          </button>
         </div>
       )}
 
-      <div style={{ padding: '24px' }}>
+      <div className="p-6">
         {page === 'dashboard' && role === 'employee' && <EmployeeDashboard setPage={setPage} />}
         {page === 'dashboard' && role === 'manager' && <ManagerDashboard setPage={setPage} />}
-        {page === 'schedule' && <ScheduleGrid role={role} isGenerated={isGenerated} setIsGenerated={setIsGenerated} isPublished={isPublished} setIsPublished={setIsPublished} />}
+        {page === 'schedule' && <ScheduleGrid role={role} isGenerated={isGenerated} setIsGenerated={setIsGenerated} isPublished={isPublished} setIsPublished={setIsPublished} publishedWeek={publishedWeek} setPublishedWeek={setPublishedWeek} />}
         {page === 'team' && <h1>Team</h1>}
         {page === 'earnings' && <h1>Earnings</h1>}
         {page === 'messages' && <h1>Messages</h1>} 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const CREDENTIALS = {
     admin: { password: 'admin' , role: 'manager' },
@@ -24,75 +24,47 @@ function Login({ onLogin }) {
         if (e.key === 'Enter') handleSubmit()
     }
 
+    const [isDark, setIsDark] = useState (
+        window.matchMedia('(prefers-color-scheme: dark)').matches
+    )
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+        const handler = (e) => setIsDark(e.matches)
+        mediaQuery.addEventListener('change', handler)
+        return () => mediaQuery.removeEventListener('change', handler)
+    }, [])
+
     return (
-        < div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            akignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#f5f5f5'
-        }}>
-            <div style={{
-                backgroundColor: '#fff',
-                borderRadius: '16px',
-                border: '1px solid #e0e0e0',
-                padding: '48px 40px',
-                width: '100%',
-                maxWidth: '400px',
-                boxSizing: 'border-box'
-            }}>
+        < div className='min-h-screen flex items-cetner justify-center bg-gray-100 dark:bg-gray-900'>
+            <div className='bg-white dark:bg-gray-800 rounded-2x1 border border-gray-200 dark:border-gray-700 p-12 w-full max-w-md'>
                 {/* Logo */}
-                <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                <div className='flex justify-center mb-8'>
                     <img
-                      src="/clockedin-logo.svg"
+                      src={isDark ? '/clockedin-logo-dark.svg' : '/clockedin-logo.svg'}
                       alt="cLockedIn"
-                      style={{ heihgt: '56px', width: 'auto', maxWidth: '100%'}}
+                      className="h-24 w-auto"
                     />
                 </div>
 
                 {/* Title */}
-                <h2 style={{
-                    margin: '0 0 4px',
-                    fontSize: '22px',
-                    fontWeight: '600',
-                    textAlign: 'center',
-                    color: '#111'
-                }}>
+                <h2 className='text-2x1 font-semibold text-center text-gray-900 dark:text-gray-100 mb-1'>
                     Welcome Back
                 </h2>
-                <p style={{
-                    margin: '0 0 28px',
-                    fontSize: '14px',
-                    color: '#888',
-                    textAlign: 'center'
-                }}>
+                <p className="text-sm text-center text-gray-500 dark:text-gray-400 mb-7">
                     Sign in to your account
                 </p>
 
                 {/* Error message */}
                 {error && (
-                    <div style={{
-                        backgroundColor: '#fff0f0',
-                        border: '1px solid #ffcccc',
-                        borderRadius: '8px',
-                        padding: '10px 14px',
-                        marginBottom: '16px',
-                        fontSize: '13px',
-                        color: '#cc0000'
-                    }}>
+                    <div className='bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg px-4 py-3 mb-4 text-sm text-red-600 dark:text-red-400'>
                         {error}
                     </div>
                 )}
 
                 {/* Username */}
-                <div style={{ marginBottom: '16px' }}>
-                    <label style={{
-                        display: 'block',
-                        fontSize: '13px',
-                        color: '#555',
-                        marginBottom: '6px',
-                        fontWeight: '500'
-                    }}>
+                <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">
                         Username
                     </label>
                     <input
@@ -101,27 +73,13 @@ function Login({ onLogin }) {
                       onChange={e => setUsername(e.target.value)}
                       onKeyDown={handleKeyDown}
                       placeholder="Enter your username"
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        borderRadius: '8px',
-                        border: '1px solid #e0e0e0',
-                        fontSize: '14px',
-                        boxSizing: 'border-box',
-                        outline: 'none'
-                      }}
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                 </div>
 
                 {/* Password */}
-                <div style={{ marginBottom: '24px' }}>
-                    <label style={{
-                        display: 'block',
-                        fontSize: '13px',
-                        color: '#555',
-                        marginBottom: '6px',
-                        fontWeight: '500'
-                    }}>
+                <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">
                         Password
                     </label>
                     <input
@@ -130,32 +88,14 @@ function Login({ onLogin }) {
                       onChange={e => setPassword(e.target.value)}
                       onKeyDown={handleKeyDown}
                       placeholder="Enter your password"
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        borerRadius: '8px',
-                        border: '1px solid #e0e0e0',
-                        fontSize: '14px',
-                        boxSizing: 'border-box',
-                        outline: 'none'
-                      }}
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                 </div>
 
                 {/* Submit Button */}
                 <button
                   onClick={handleSubmit}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    backgroundColor: '#16a34a',
-                    color: '#fff',
-                    fontSize: '15px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
+                  className="w-full py-3 rounded-lg bg-green-600 hover:bg-green-700 active:sacle-95 text-white font-semibold text-sm transition-all"
                 >
                     Sign In
                 </button>

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 160" width="420" height="160">
+  <defs>
+    <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4ade80"/>
+      <stop offset="100%" style="stop-color:#86efac"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="80" cy="80" r="58" fill="#14532d" opacity="0.4" stroke="#4ade80" stroke-width="2"/>
+
+  <path d="M 74.77 139.77 A 60 60 0 1 1 85.23 139.77"
+        fill="none"
+        stroke="url(#arcGrad)"
+        stroke-width="7"
+        stroke-linecap="round"/>
+
+  <g transform="translate(85.23, 139.77) rotate(265)">
+    <polygon points="0,-11 7,5 -7,5" fill="#4ade80"/>
+  </g>
+
+  <g stroke="#86efac" stroke-width="2" stroke-linecap="round">
+    <line x1="80" y1="24" x2="80" y2="33"/>
+    <line x1="136" y1="80" x2="127" y2="80"/>
+    <line x1="80" y1="136" x2="80" y2="127"/>
+    <line x1="24" y1="80"  x2="33" y2="80"/>
+  </g>
+
+  <line x1="80" y1="80" x2="51" y2="50" stroke="#86efac" stroke-width="5" stroke-linecap="round"/>
+  <line x1="80" y1="80" x2="88" y2="27" stroke="#4ade80" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="80" cy="80" r="5.5" fill="#4ade80"/>
+
+  <text x="158" y="75" font-family="Nunito, Verdana, sans-serif" font-weight="800" font-size="44" letter-spacing="-0.5">
+    <tspan fill="#86efac">c</tspan><tspan fill="#4ade80">L</tspan><tspan fill="#86efac">ocked</tspan><tspan fill="#4ade80">In</tspan>
+  </text>
+
+  <text x="162" y="102" font-family="Nunito, Verdana, sans-serif" font-weight="700" font-size="13" fill="#86efac" letter-spacing="3.5">SCHEDULING</text>
+</svg>
