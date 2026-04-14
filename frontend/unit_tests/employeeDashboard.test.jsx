@@ -14,9 +14,9 @@ describe('Employee Dashboard', () => {
     expect(document.body).toBeTruthy()
   })
 
-  it('displays the demo employee name', () => {
+  it('displays the employee welcome message', () => {
     renderEmployeeDashboard()
-    expect(screen.getAllByText(/marcus j\./i)[0]).toBeInTheDocument()
+    expect(screen.getByText(/welcome back, employee/i)).toBeInTheDocument()
   })
 
   it('renders a schedule section', () => {
