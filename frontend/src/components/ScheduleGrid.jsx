@@ -2,16 +2,13 @@ import { useState } from 'react'
 import { scheduleData } from '../constants/scheduleData'
 import { days } from '../constants/days'
 import { roleColors } from '../constants/roleColors'
+import { getNextWeekLabel, getWeekOptions } from '../utils/dateUtils'
 
 const ShiftPill = ({ shift }) => (
-  <span style={{
-    backgroundColor: roleColors[shift.role],
-    color: '#fff',
-    padding: '2px 8px',
-    borderRadius: '4px',
-    fontSize: '11px',
-    display: 'inline-block'
-  }}>
+  <span
+    className="inline-block px-2 py-0.5 rounded text-white text-xs"
+    style={{ backgroundColor: roleColors[shift.role] }}
+  >
     {shift.role}
   </span>
 )
@@ -19,27 +16,20 @@ const ShiftPill = ({ shift }) => (
 const ListView = ({ getShifts }) => (
   <div>
     {days.map(day => (
-      <div key={day} style={{ marginBottom: '32px' }}>
-        <h2 style={{ textAlign: 'left' }}>{day}</h2>
+      <div key={day} className="mb-8">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{day}</h2>
         {['Morning', 'Evening'].map(period => {
           const shifts = getShifts(day, period)
           if (shifts.length === 0) return null
           return (
-            <div key={period}>
-              <h3 style={{ textAlign: 'left' }}>{period}</h3>
+            <div key={period} className="mb-4">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">{period}</h3>
               {shifts.map(shift => (
-                <div key={shift.id} style={{
-                  display: 'flex',
-                  gap: '16px',
-                  alignItems: 'center',
-                  padding: '8px 0',
-                  borderBottom: '1px solid #ccc',
-                  textAlign: 'left'
-                }}>
+                <div key={shift.id} className="flex items-center gap-4 py-2 border-b border-gray-200 dark:border-gray-700">
                   <ShiftPill shift={shift} />
-                  <span>{shift.employee}</span>
-                  <span>{shift.startTime} - {shift.endTime}</span>
-                  <span>${shift.estimatedEarnings}</span>
+                  <span className="text-sm text-gray-900 dark:text-gray-100">{shift.employee}</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{shift.startTime} - {shift.endTime}</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 ml-auto">${shift.estimatedEarnings}</span>
                 </div>
               ))}
             </div>
@@ -51,20 +41,20 @@ const ListView = ({ getShifts }) => (
 )
 
 const EmployeeRowView = ({ employees }) => (
-  <div style={{ overflowX: 'auto' }}>
-    <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+  <div className="overflow-x-auto">
+    <table className="w-full border-collapse">
       <thead>
         <tr>
-          <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>Employee</th>
+          <th className="p-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Employee</th>
           {days.map(day => (
-            <th key={day} style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid #ccc' }}>{day}</th>
+            <th key={day} className="p-2 text-center text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">{day}</th>
           ))}
         </tr>
       </thead>
       <tbody>
         {employees.map(employee => (
           <tr key={employee}>
-            <td style={{ padding: '8px', borderBottom: '1px solid #ccc', whiteSpace: 'nowrap' }}>{employee}</td>
+            <td className="p-2 text-sm text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap">{employee}</td>
             {days.map(day => {
               const morning = scheduleData.find(s => {
                 if (s.employee !== employee || s.day !== day) return false
@@ -75,30 +65,23 @@ const EmployeeRowView = ({ employees }) => (
                 return s.startTime.split(' ')[1] === 'PM'
               })
               return (
-                <td key={day} style={{ padding: '4px', borderBottom: '1px solid #ccc', verticalAlign: 'top', minWidth: '90px' }}>
+                <td key={day} className="p-1 border-b border-gray-200 dark:border-gray-700 align-top min-w-[90px]">
                   {morning && (
-                    <div style={{
-                      backgroundColor: roleColors[morning.role],
-                      color: '#fff',
-                      padding: '4px 6px',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      marginBottom: evening ? '2px' : '0'
-                    }}>
+                    <div
+                      className="rounded text-white text-xs p-1 mb-0.5"
+                      style={{ backgroundColor: roleColors[morning.role] }}
+                    >
                       <div>{morning.role}</div>
-                      <div style={{ opacity: 0.85 }}>{morning.startTime} - {morning.endTime}</div>
+                      <div className="opacity-80">{morning.startTime} - {morning.endTime}</div>
                     </div>
                   )}
                   {evening && (
-                    <div style={{
-                      backgroundColor: roleColors[evening.role],
-                      color: '#fff',
-                      padding: '4px 6px',
-                      borderRadius: '4px',
-                      fontSize: '11px'
-                    }}>
+                    <div
+                      className="rounded text-white text-xs p-1"
+                      style={{ backgroundColor: roleColors[evening.role] }}
+                    >
                       <div>{evening.role}</div>
-                      <div style={{ opacity: 0.85 }}>{evening.startTime} - {evening.endTime}</div>
+                      <div className="opacity-80">{evening.startTime} - {evening.endTime}</div>
                     </div>
                   )}
                 </td>
@@ -112,27 +95,24 @@ const EmployeeRowView = ({ employees }) => (
 )
 
 const RoleRowView = ({ roles }) => (
-  <div style={{ overflowX: 'auto' }}>
-    <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+  <div className="overflow-x-auto">
+    <table className="w-full border-collapse">
       <thead>
         <tr>
-          <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>Role</th>
+          <th className="p-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Role</th>
           {days.map(day => (
-            <th key={day} style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid #ccc' }}>{day}</th>
+            <th key={day} className="p-2 text-center text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">{day}</th>
           ))}
         </tr>
       </thead>
       <tbody>
         {roles.map(roleName => (
           <tr key={roleName}>
-            <td style={{ padding: '8px', borderBottom: '1px solid #ccc', whiteSpace: 'nowrap' }}>
-              <span style={{
-                backgroundColor: roleColors[roleName],
-                color: '#fff',
-                padding: '2px 8px',
-                borderRadius: '4px',
-                fontSize: '12px'
-              }}>
+            <td className="p-2 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap">
+              <span
+                className="inline-block px-2 py-0.5 rounded text-white text-xs"
+                style={{ backgroundColor: roleColors[roleName] }}
+              >
                 {roleName}
               </span>
             </td>
@@ -146,17 +126,17 @@ const RoleRowView = ({ roles }) => (
                 return s.startTime.split(' ')[1] === 'PM'
               })
               return (
-                <td key={day} style={{ padding: '4px', borderBottom: '1px solid #ccc', verticalAlign: 'top', minWidth: '90px' }}>
-                  <div style={{ borderBottom: '1px solid #eee', paddingBottom: '4px', marginBottom: '4px' }}>
+                <td key={day} className="p-1 border-b border-gray-200 dark:border-gray-700 align-top min-w-[90px]">
+                  <div className="border-b border-gray-100 dark:border-gray-700 pb-1 mb-1">
                     {morning.length > 0
-                      ? morning.map(s => <div key={s.id} style={{ fontSize: '11px' }}>{s.employee}</div>)
-                      : <div style={{ color: '#ccc', fontSize: '11px' }}>—</div>
+                      ? morning.map(s => <div key={s.id} className="text-xs text-gray-800 dark:text-gray-200">{s.employee}</div>)
+                      : <div className="text-xs text-gray-300 dark:text-gray-600">—</div>
                     }
                   </div>
                   <div>
                     {evening.length > 0
-                      ? evening.map(s => <div key={s.id} style={{ fontSize: '11px' }}>{s.employee}</div>)
-                      : <div style={{ color: '#ccc', fontSize: '11px' }}>—</div>
+                      ? evening.map(s => <div key={s.id} className="text-xs text-gray-800 dark:text-gray-200">{s.employee}</div>)
+                      : <div className="text-xs text-gray-300 dark:text-gray-600">—</div>
                     }
                   </div>
                 </td>
@@ -169,11 +149,12 @@ const RoleRowView = ({ roles }) => (
   </div>
 )
 
-function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPublished }) {
-  const [view, setView] = useState('list')
+function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPublished, setPublishedWeek }) {
+  const [view, setView] = useState('employee')
   const [weekOffset, setWeekOffset] = useState(0)
   const [showModal, setShowModal] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedWeek, setSelectedWeek] = useState(getNextWeekLabel())
 
   const handleGenerate = () => {
     setIsLoading(true)
@@ -202,88 +183,55 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
   }
 
   return (
-    <div>
-      {/* Generate screen — shows when schedule hasn't been generated yet */}
+    <div className="max-w-7xl mx-auto">
+
+      {/* Generate screen */}
       {!isGenerated && role === 'manager' && (
-        <div style={{ maxWidth: '560px', margin: '0 auto', textAlign: 'center', paddingTop: '48px' }}>
-          <h2 style={{ marginBottom: '8px' }}>Generate Schedule</h2>
-          <p style={{ color: '#888', marginBottom: '32px', fontSize: '14px' }}>
+        <div className="max-w-lg mx-auto text-center pt-12">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Generate Schedule</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">
             Review the inputs below and click Generate to produce this week's schedule.
           </p>
 
-          {/* Inputs */}
-          <div style={{ textAlign: 'left', marginBottom: '32px' }}>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', color: '#666', display: 'block', marginBottom: '6px' }}>
-                Week
-              </label>
-              <input
-                type="text"
-                defaultValue="Mar 24 - Mar 30, 2026"
-                style={{
-                  width: '100%', padding: '10px 12px', borderRadius: '8px',
-                  border: '1px solid #e0e0e0', fontSize: '14px', boxSizing: 'border-box'
-                }}
-              />
+          <div className="text-left mb-8 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">Week</label>
+              <select
+                value={selectedWeek}
+                onChange={e => setSelectedWeek(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                {getWeekOptions().map(week => (
+                  <option key={week} value={week}>{week}</option>
+                ))}
+              </select>
             </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', color: '#666', display: 'block', marginBottom: '6px' }}>
-                Projected weekly sales
-              </label>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">Projected weekly sales</label>
               <input
                 type="text"
                 defaultValue="$24,500"
-                style={{
-                  width: '100%', padding: '10px 12px', borderRadius: '8px',
-                  border: '1px solid #e0e0e0', fontSize: '14px', boxSizing: 'border-box'
-                }}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', color: '#666', display: 'block', marginBottom: '6px' }}>
-                Staffing rules
-              </label>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">Staffing rules</label>
               <input
                 type="text"
                 defaultValue="Standard coverage — weekday/weekend split"
-                style={{
-                  width: '100%', padding: '10px 12px', borderRadius: '8px',
-                  border: '1px solid #e0e0e0', fontSize: '14px', boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', color: '#666', display: 'block', marginBottom: '6px' }}>
-                Notes
-              </label>
-              <textarea
-                defaultValue="Bar closed Sunday. Shift Lead required Fri/Sat evenings."
-                style={{
-                  width: '100%', padding: '10px 12px', borderRadius: '8px',
-                  border: '1px solid #e0e0e0', fontSize: '14px',
-                  boxSizing: 'border-box', height: '80px', resize: 'none'
-                }}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
           </div>
 
-          {/* Generate button */}
           {isLoading ? (
-            <div style={{ fontSize: '14px', color: '#888' }}>
-              ⏳ Generating schedule...
-            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">⏳ Generating schedule...</p>
           ) : (
             <button
               onClick={handleGenerate}
-              style={{
-                backgroundColor: '#000', color: '#fff',
-                border: 'none', borderRadius: '8px',
-                padding: '12px 32px', fontSize: '15px',
-                cursor: 'pointer', fontWeight: '500'
-              }}
+              className="px-8 py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold text-sm transition-colors"
             >
               Generate Schedule
             </button>
@@ -291,43 +239,45 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
         </div>
       )}
 
+      {/* Employee no schedule message */}
       {(!isGenerated || !isPublished) && role === 'employee' && (
-        <p style={{ color: '#888', fontSize: '14px' }}>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           No schedule has been posted yet. Check back soon!
         </p>
       )}
 
-      {/* Schedule — shows after generation */}
-      {isGenerated && ( role === 'manager' || isPublished) && (
+      {/* Schedule view */}
+      {isGenerated && (role === 'manager' || isPublished) && (
         <div>
-          {/* Week navigation */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <button onClick={() => setWeekOffset(weekOffset - 1)}>←</button>
-              <span>{getWeekLabel()}</span>
-              <button onClick={() => setWeekOffset(weekOffset + 1)}>→</button>
+          {/* Header row */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setWeekOffset(weekOffset - 1)}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm transition-colors"
+              >
+                ←
+              </button>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{getWeekLabel()}</span>
+              <button
+                onClick={() => setWeekOffset(weekOffset + 1)}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm transition-colors"
+              >
+                →
+              </button>
             </div>
 
-            {/* Publish button — manager only */}
             {role === 'manager' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className="flex items-center gap-3">
                 {isPublished && (
-                  <span style={{
-                    backgroundColor: '#4CAF50', color: '#fff',
-                    padding: '4px 12px', borderRadius: '20px', fontSize: '13px'
-                  }}>
+                  <span className="px-3 py-1 rounded-full bg-green-600 text-white text-xs font-medium">
                     ✓ Published
                   </span>
                 )}
                 {!isPublished && (
                   <button
                     onClick={() => setShowModal(true)}
-                    style={{
-                      backgroundColor: '#000', color: '#fff',
-                      border: 'none', borderRadius: '8px',
-                      padding: '8px 20px', fontSize: '14px',
-                      cursor: 'pointer', fontWeight: '500'
-                    }}
+                    className="px-5 py-2 rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-semibold hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors"
                   >
                     Publish Schedule
                   </button>
@@ -337,24 +287,23 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
           </div>
 
           {/* View toggle */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-            <button onClick={() => setView('list')}
-              style={{ fontWeight: view === 'list' ? 'bold' : 'normal' }}>
-              List View
-            </button>
-            <button onClick={() => setView('employee')}
-              style={{ fontWeight: view === 'employee' ? 'bold' : 'normal' }}>
+          <div className="flex gap-2 mb-6">
+            <button
+              onClick={() => setView('employee')}
+              className={`px-3 py-1.5 rounded-md text-sm transition-colors ${view === 'employee' ? 'bg-gray-100 dark:bg-gray-800 font-semibold text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+            >
               Week View
             </button>
             {role === 'manager' && (
-              <button onClick={() => setView('role')}
-                style={{ fontWeight: view === 'role' ? 'bold' : 'normal' }}>
+              <button
+                onClick={() => setView('role')}
+                className={`px-3 py-1.5 rounded-md text-sm transition-colors ${view === 'role' ? 'bg-gray-100 dark:bg-gray-800 font-semibold text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+              >
                 Role View
               </button>
             )}
           </div>
 
-          {view === 'list' && <ListView getShifts={getShifts} />}
           {view === 'employee' && <EmployeeRowView employees={employees} />}
           {view === 'role' && <RoleRowView roles={roles} />}
         </div>
@@ -362,41 +311,26 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
 
       {/* Confirmation modal */}
       {showModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            backgroundColor: '#fff', borderRadius: '12px',
-            padding: '32px', maxWidth: '400px', width: '100%', textAlign: 'center'
-          }}>
-            <h2 style={{ margin: '0 0 8px' }}>Publish Schedule?</h2>
-            <p style={{ color: '#888', fontSize: '14px', margin: '0 0 24px' }}>
-              This will notify all employees of the schedule for the week of Mar 24 - Mar 30, 2026.
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4 text-center">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Publish Schedule?</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              This will notify all employees of the schedule for the week of {selectedWeek}.
             </p>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <div className="flex gap-3 justify-center">
               <button
                 onClick={() => setShowModal(false)}
-                style={{
-                  padding: '10px 24px', borderRadius: '8px',
-                  border: '1px solid #e0e0e0', backgroundColor: '#fff',
-                  fontSize: '14px', cursor: 'pointer'
-                }}
+                className="px-6 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => {
                   setIsPublished(true)
+                  setPublishedWeek(selectedWeek)
                   setShowModal(false)
                 }}
-                style={{
-                  padding: '10px 24px', borderRadius: '8px',
-                  border: 'none', backgroundColor: '#000', color: '#fff',
-                  fontSize: '14px', cursor: 'pointer', fontWeight: '500'
-                }}
+                className="px-6 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors"
               >
                 Publish
               </button>
@@ -404,6 +338,7 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
           </div>
         </div>
       )}
+
     </div>
   )
 }

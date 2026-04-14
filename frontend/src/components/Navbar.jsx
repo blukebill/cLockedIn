@@ -2,44 +2,27 @@ function Navbar({ page, setPage, role, onLogout }) {
   const navItems = ['dashboard', 'schedule', 'team', 'earnings', 'messages']
 
   return (
-    <nav style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '0 24px',
-      height: '56px',
-      borderBottom: '1px solid #e0e0e0',
-      backgroundColor: '#ffffff',
-      position: 'sticky',
-      top: 0,
-      zIndex: 100
-    }}>
+    <nav className="flex items-center justify-between px-6 h-14 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 sticky top-0 z-50">
+
       {/* Logo */}
-      <img
-        src="/clockedin-logo.svg"
-        alt="cLockedIn"
-        onClick={() => setPage('dashboard')}
-        style={{ height: '64px', width: 'auto', cursor: 'pointer'}}
-      />
+      <div className="flex items-center cursor-pointer" onClick={() => setPage('dashboard')}>
+        <picture>
+          <source srcSet="/clockedin-logo-nav-dark.svg" media="(prefers-color-scheme: dark)" />
+          <img src="/clockedin-logo-nav.svg" alt="cLockedIn" className="h-10 w-auto" />
+        </picture>
+      </div>
 
       {/* Nav links */}
-      <div style={{ display: 'flex', gap: '8px' }}>
+      <div className="flex gap-1">
         {navItems.map(item => (
           <button
             key={item}
             onClick={() => setPage(item)}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: page === item ? '600' : '400',
-              color: page === item ? '#000' : '#666',
-              backgroundColor: page === item ? '#f0f0f0' : 'transparent',
-              textTransform: 'capitalize'
-            }}
+            className={`px-3 py-1.5 rounded-md text-sm capitalize transition-colors
+              ${page === item
+                ? 'bg-gray-100 dark:bg-gray-800 font-semibold text-gray-900 dark:text-gray-100'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
           >
             {item}
           </button>
@@ -47,33 +30,18 @@ function Navbar({ page, setPage, role, onLogout }) {
       </div>
 
       {/* Right icons */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        <button style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '20px',
-          padding: '4px'
-        }}>
+      <div className="flex items-center gap-4">
+        <button className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors text-lg">
           🔔
         </button>
-        <div 
+        <div
           onClick={onLogout}
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            backgroundColor: '#e0e0e0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer'
-        }}>
+          className="w-8 h-8 rounded-full bg-green-600 hover:bg-green-700 flex items-center justify-center text-white text-sm font-semibold cursor-pointer transition-colors"
+        >
           {role === 'manager' ? 'M' : 'E'}
         </div>
       </div>
+
     </nav>
   )
 }
