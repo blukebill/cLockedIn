@@ -7,7 +7,15 @@ import java.util.Optional;
 
 public interface EmployeeJobCodeRepository extends JpaRepository<EmployeeJobCode, Long> {
 
-    Optional<EmployeeJobCode> findByRestaurantIdAndEmployeeId(Long restaurantId, Long employeeId);
+    Optional<EmployeeJobCode> findByRestaurantIdAndEmployeeIdAndJobCodeId(
+            Long restaurantId,
+            Long employeeId,
+            Long jobCodeId
+    );
 
     List<EmployeeJobCode> findByRestaurantIdOrderByEmployeeIdAsc(Long restaurantId);
+
+    List<EmployeeJobCode> findByRestaurantIdAndEmployeeIdOrderByJobCodeRankAsc(Long restaurantId, Long employeeId);
+
+    void deleteByRestaurantIdAndEmployeeIdAndJobCodeId(Long restaurantId, Long employeeId, Long jobCodeId);
 }

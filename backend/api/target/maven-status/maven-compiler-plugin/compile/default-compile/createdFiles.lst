@@ -28,6 +28,8 @@ com/clockedin/api/forecast/ForecastController.class
 com/clockedin/api/rolepriority/EmployeeRolePriority.class
 com/clockedin/api/timeoff/TimeOffRequestRepository.class
 com/clockedin/api/staffing/dto/StaffingRuleResponse.class
+com/clockedin/api/forecast/dto/ForecastStaffingRequirementResponse.class
+com/clockedin/api/restaurant/dto/RestaurantSettingsResponse.class
 com/clockedin/api/forecast/Forecast.class
 com/clockedin/api/timeoff/TimeOffRequestService.class
 com/clockedin/api/config/SecurityConfig.class
@@ -35,6 +37,7 @@ com/clockedin/api/auth/MeResponse.class
 com/clockedin/api/user/EmployeeService.class
 com/clockedin/api/user/dto/UpdateEmployeeRequest.class
 com/clockedin/api/user/UserRepository.class
+com/clockedin/api/restaurant/RestaurantService.class
 com/clockedin/api/auth/JwtService.class
 com/clockedin/api/ApiApplication.class
 com/clockedin/api/jobcode/JobCodeController.class
@@ -57,8 +60,10 @@ com/clockedin/api/availability/Availability.class
 com/clockedin/api/jobcode/dto/EmployeeJobCodeResponse.class
 com/clockedin/api/rolepriority/dto/EmployeeRolePriorityResponse.class
 com/clockedin/api/forecast/ForecastService.class
+com/clockedin/api/restaurant/dto/UpdateRestaurantSettingsRequest.class
 com/clockedin/api/restaurant/RestaurantRepository.class
 com/clockedin/api/auth/LoginResponse.class
+com/clockedin/api/restaurant/RestaurantController.class
 com/clockedin/api/user/dto/CreateEmployeeRequest.class
 com/clockedin/api/jobcode/dto/AssignEmployeeJobCodeRequest.class
 com/clockedin/api/timeoff/TimeOffRequest.class

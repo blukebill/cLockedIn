@@ -32,6 +32,7 @@ public class StaffingRuleService {
                 });
 
         staffingRule.setRequiredCount(request.getRequiredCount());
+        staffingRule.setHeadsPerEmployee(request.getHeadsPerEmployee());
 
         StaffingRule saved = staffingRuleRepository.save(staffingRule);
         return toResponse(saved);
@@ -56,7 +57,8 @@ public class StaffingRuleService {
                 staffingRule.getId(),
                 staffingRule.getDayOfWeek(),
                 staffingRule.getRole(),
-                staffingRule.getRequiredCount()
+                staffingRule.getRequiredCount(),
+                staffingRule.getHeadsPerEmployee()
         );
     }
 

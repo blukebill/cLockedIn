@@ -1,1 +1,16 @@
 /home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/ApiApplicationTests.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/auth/AuthControllerTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/auth/AuthServiceTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/auth/JwtServiceTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/availability/AvailabilityServiceTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/forecast/ForecastServiceTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/jobcode/JobCodeServiceTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/restaurant/RestaurantControllerTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/restaurant/RestaurantServiceTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/rolepriority/EmployeeRolePriorityServiceTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/staffing/StaffingRuleControllerTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/staffing/StaffingRuleServiceTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/timeoff/TimeOffRequestControllerTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/timeoff/TimeOffRequestServiceTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/user/EmployeeControllerTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/user/EmployeeServiceTest.java

@@ -23,4 +23,7 @@ public class UpsertStaffingRuleRequest {
     @NotNull
     @Min(value = 0, message = "requiredCount must be non-negative")
     private Integer requiredCount;
+
+    @Min(value = 1, message = "headsPerEmployee must be positive")
+    private Integer headsPerEmployee;
 }

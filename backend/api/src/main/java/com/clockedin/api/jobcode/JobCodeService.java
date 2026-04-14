@@ -12,6 +12,7 @@ import com.clockedin.api.user.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -68,6 +69,7 @@ public class JobCodeService {
         return toJobCodeResponse(jobCodeRepository.save(jobCode));
     }
 
+    @Transactional(readOnly = true)
     public List<EmployeeJobCodeResponse> getEmployeeJobCodes(Long restaurantId) {
         return employeeJobCodeRepository.findByRestaurantIdOrderByEmployeeIdAsc(restaurantId)
                 .stream()
@@ -75,13 +77,17 @@ public class JobCodeService {
                 .toList();
     }
 
-    public EmployeeJobCodeResponse getEmployeeJobCode(Long restaurantId, Long employeeId) {
-        EmployeeJobCode assignment = employeeJobCodeRepository.findByRestaurantIdAndEmployeeId(restaurantId, employeeId)
-                .orElseThrow(() -> new EntityNotFoundException("Employee job code assignment not found"));
+    @Transactional(readOnly = true)
+    public List<EmployeeJobCodeResponse> getEmployeeJobCodes(Long restaurantId, Long employeeId) {
+        getEmployeeForRestaurant(employeeId, restaurantId);
 
-        return toEmployeeJobCodeResponse(assignment);
+        return employeeJobCodeRepository.findByRestaurantIdAndEmployeeIdOrderByJobCodeRankAsc(restaurantId, employeeId)
+                .stream()
+                .map(this::toEmployeeJobCodeResponse)
+                .toList();
     }
 
+    @Transactional
     public EmployeeJobCodeResponse assignEmployeeJobCode(
             Long restaurantId,
             Long employeeId,
@@ -91,7 +97,11 @@ public class JobCodeService {
         JobCode jobCode = jobCodeRepository.findByIdAndRestaurantId(request.getJobCodeId(), restaurantId)
                 .orElseThrow(() -> new EntityNotFoundException("Job code not found"));
 
-        EmployeeJobCode assignment = employeeJobCodeRepository.findByRestaurantIdAndEmployeeId(restaurantId, employeeId)
+        EmployeeJobCode assignment = employeeJobCodeRepository.findByRestaurantIdAndEmployeeIdAndJobCodeId(
+                        restaurantId,
+                        employeeId,
+                        jobCode.getId()
+                )
                 .orElseGet(EmployeeJobCode::new);
 
         assignment.setRestaurant(employee.getRestaurant());
@@ -99,6 +109,22 @@ public class JobCodeService {
         assignment.setJobCode(jobCode);
 
         return toEmployeeJobCodeResponse(employeeJobCodeRepository.save(assignment));
+    }
+
+    @Transactional
+    public void removeEmployeeJobCode(Long restaurantId, Long employeeId, Long jobCodeId) {
+        getEmployeeForRestaurant(employeeId, restaurantId);
+        jobCodeRepository.findByIdAndRestaurantId(jobCodeId, restaurantId)
+                .orElseThrow(() -> new EntityNotFoundException("Job code not found"));
+
+        EmployeeJobCode assignment = employeeJobCodeRepository.findByRestaurantIdAndEmployeeIdAndJobCodeId(
+                        restaurantId,
+                        employeeId,
+                        jobCodeId
+                )
+                .orElseThrow(() -> new EntityNotFoundException("Employee job code assignment not found"));
+
+        employeeJobCodeRepository.delete(assignment);
     }
 
     private User getEmployeeForRestaurant(Long employeeId, Long restaurantId) {

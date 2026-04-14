@@ -23,6 +23,7 @@
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/forecast/ForecastRepository.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/forecast/ForecastService.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/forecast/dto/ForecastResponse.java
+/home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/forecast/dto/ForecastStaffingRequirementResponse.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/forecast/dto/UpsertForecastRequest.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/jobcode/EmployeeJobCode.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/jobcode/EmployeeJobCodeRepository.java
@@ -35,7 +36,11 @@
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/jobcode/dto/JobCodeResponse.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/jobcode/dto/UpsertJobCodeRequest.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/restaurant/Restaurant.java
+/home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/restaurant/RestaurantController.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/restaurant/RestaurantRepository.java
+/home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/restaurant/RestaurantService.java
+/home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/restaurant/dto/RestaurantSettingsResponse.java
+/home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/restaurant/dto/UpdateRestaurantSettingsRequest.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/rolepriority/EmployeeRolePriority.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/rolepriority/EmployeeRolePriorityController.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/rolepriority/EmployeeRolePriorityRepository.java

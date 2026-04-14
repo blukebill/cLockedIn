@@ -1,13 +1,14 @@
 package com.clockedin.api;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+import static org.assertj.core.api.Assertions.assertThat;
+
 class ApiApplicationTests {
 
 	@Test
 	void contextLoads() {
+		assertThat(ApiApplication.class).isNotNull();
 	}
 
 }

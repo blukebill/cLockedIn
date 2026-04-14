@@ -66,6 +66,10 @@ public class EmployeeService {
             throw new EntityNotFoundException("Employee not found");
         }
 
+        if (request.name() != null && !request.name().isBlank()) {
+            employee.setName(request.name());
+        }
+
         if (request.email() != null && !request.email().isBlank()) {
             if (!employee.getEmail().equals(request.email()) && userRepository.existsByEmail(request.email())) {
                 throw new IllegalArgumentException("Email already in use");

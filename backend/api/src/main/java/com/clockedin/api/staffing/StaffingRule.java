@@ -42,6 +42,9 @@ public class StaffingRule {
     @Column(name = "required_count", nullable = false)
     private Integer requiredCount;
 
+    @Column(name = "heads_per_employee")
+    private Integer headsPerEmployee;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

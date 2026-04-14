@@ -12,4 +12,5 @@ public class StaffingRuleResponse {
     private DayOfWeek dayOfWeek;
     private String role;
     private Integer requiredCount;
+    private Integer headsPerEmployee;
 }

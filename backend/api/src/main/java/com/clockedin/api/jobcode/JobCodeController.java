@@ -46,11 +46,11 @@ public class JobCodeController {
 
     @PreAuthorize("hasRole('MANAGER')")
     @GetMapping("/employee-job-codes/employee/{employeeId}")
-    public EmployeeJobCodeResponse getEmployeeJobCode(
+    public List<EmployeeJobCodeResponse> getEmployeeJobCodesForEmployee(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long employeeId
     ) {
-        return jobCodeService.getEmployeeJobCode(userDetails.getRestaurantId(), employeeId);
+        return jobCodeService.getEmployeeJobCodes(userDetails.getRestaurantId(), employeeId);
     }
 
     @PreAuthorize("hasRole('MANAGER')")
@@ -64,6 +64,20 @@ public class JobCodeController {
                 userDetails.getRestaurantId(),
                 employeeId,
                 request
+        );
+    }
+
+    @PreAuthorize("hasRole('MANAGER')")
+    @DeleteMapping("/employee-job-codes/employee/{employeeId}/job-code/{jobCodeId}")
+    public void removeEmployeeJobCode(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long employeeId,
+            @PathVariable Long jobCodeId
+    ) {
+        jobCodeService.removeEmployeeJobCode(
+                userDetails.getRestaurantId(),
+                employeeId,
+                jobCodeId
         );
     }
 }
