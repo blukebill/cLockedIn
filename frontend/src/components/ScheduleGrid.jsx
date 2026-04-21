@@ -65,7 +65,7 @@ const EmployeeRowView = ({ employees }) => (
                 return s.startTime.split(' ')[1] === 'PM'
               })
               return (
-                <td key={day} className="p-1 border-b border-gray-200 dark:border-gray-700 align-top min-w-[90px]">
+                <td key={day} className="p-1 border-b border-gray-200 dark:border-gray-700 align-top min-w-22.5">
                   {morning && (
                     <div
                       className="rounded text-white text-xs p-1 mb-0.5"
@@ -126,7 +126,7 @@ const RoleRowView = ({ roles }) => (
                 return s.startTime.split(' ')[1] === 'PM'
               })
               return (
-                <td key={day} className="p-1 border-b border-gray-200 dark:border-gray-700 align-top min-w-[90px]">
+                <td key={day} className="p-1 border-b border-gray-200 dark:border-gray-700 align-top min-w-22.5">
                   <div className="border-b border-gray-100 dark:border-gray-700 pb-1 mb-1">
                     {morning.length > 0
                       ? morning.map(s => <div key={s.id} className="text-xs text-gray-800 dark:text-gray-200">{s.employee}</div>)
@@ -287,6 +287,7 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
           </div>
 
           {/* View toggle */}
+          {/*
           <div className="flex gap-2 mb-6">
             <button
               onClick={() => setView('employee')}
@@ -303,6 +304,7 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
               </button>
             )}
           </div>
+          */}
 
           {view === 'employee' && <EmployeeRowView employees={employees} />}
           {view === 'role' && <RoleRowView roles={roles} />}
