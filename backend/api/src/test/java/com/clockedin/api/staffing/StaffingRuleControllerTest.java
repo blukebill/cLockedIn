@@ -28,8 +28,10 @@ import java.time.DayOfWeek;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -54,7 +56,7 @@ class StaffingRuleControllerTest {
     void managerCanSetHeadsPerEmployeeRequirement() throws Exception {
         UpsertStaffingRuleRequest request = request(25);
         when(staffingRuleService.upsertRule(eq(1L), any(UpsertStaffingRuleRequest.class)))
-                .thenReturn(new StaffingRuleResponse(1L, DayOfWeek.MONDAY, "SERVER", 2, 25));
+                .thenReturn(new StaffingRuleResponse(1L, DayOfWeek.MONDAY, 10L, "SERVER", 1, 2, 25));
 
         mockMvc.perform(put("/staffing-rules")
                         .with(user(userDetails(Role.MANAGER)))
@@ -84,6 +86,15 @@ class StaffingRuleControllerTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void managerCanDeleteStaffingRule() throws Exception {
+        mockMvc.perform(delete("/staffing-rules/7")
+                        .with(user(userDetails(Role.MANAGER))))
+                .andExpect(status().isOk());
+
+        verify(staffingRuleService).deleteRule(1L, 7L);
+    }
+
     @TestConfiguration
     @EnableMethodSecurity
     static class TestSecurityConfig {
@@ -101,8 +112,7 @@ class StaffingRuleControllerTest {
     private UpsertStaffingRuleRequest request(Integer headsPerEmployee) {
         UpsertStaffingRuleRequest request = new UpsertStaffingRuleRequest();
         request.setDayOfWeek(DayOfWeek.MONDAY);
-        request.setRole("server");
-        request.setRequiredCount(2);
+        request.setJobCodeId(10L);
         request.setHeadsPerEmployee(headsPerEmployee);
         return request;
     }

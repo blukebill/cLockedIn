@@ -1,11 +1,24 @@
-import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
 import Login from '../src/pages/Login'
+
+const mocks = vi.hoisted(() => ({
+  login: vi.fn(),
+}))
+
+vi.mock('../src/services/api', () => ({
+  authApi: {
+    login: mocks.login,
+  },
+}))
 
 const renderLogin = (onLogin = vi.fn()) =>
   render(<Login onLogin={onLogin} />)
 
 describe('Login Page', () => {
+  beforeEach(() => {
+    mocks.login.mockReset()
+  })
 
   // --- Rendering ---
 
@@ -42,38 +55,44 @@ describe('Login Page', () => {
 
   // --- Auth Logic ---
 
-  it('calls onLogin with "manager" for valid manager credentials', () => {
+  it('calls onLogin with the backend user for valid manager credentials', async () => {
     const onLogin = vi.fn()
+    const user = { userId: 1, name: 'Manager One', email: 'manager1@demo.com', role: 'MANAGER' }
+    mocks.login.mockResolvedValue(user)
     renderLogin(onLogin)
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'admin' } })
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'manager1@demo.com' } })
     fireEvent.change(document.querySelector('input[type="password"]'), { target: { value: 'admin' } })
     fireEvent.click(screen.getByRole('button'))
-    expect(onLogin).toHaveBeenCalledWith('manager')
+    await waitFor(() => expect(onLogin).toHaveBeenCalledWith(user))
   })
 
-  it('calls onLogin with "employee" for valid employee credentials', () => {
+  it('calls onLogin with the backend user for valid employee credentials', async () => {
     const onLogin = vi.fn()
+    const user = { userId: 2, name: 'Employee One', email: 'employee1@demo.com', role: 'EMPLOYEE' }
+    mocks.login.mockResolvedValue(user)
     renderLogin(onLogin)
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'user' } })
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'employee1@demo.com' } })
     fireEvent.change(document.querySelector('input[type="password"]'), { target: { value: 'user' } })
     fireEvent.click(screen.getByRole('button'))
-    expect(onLogin).toHaveBeenCalledWith('employee')
+    await waitFor(() => expect(onLogin).toHaveBeenCalledWith(user))
   })
 
-  it('shows an error message for invalid credentials', () => {
+  it('shows an error message for invalid credentials', async () => {
+    mocks.login.mockRejectedValue(new Error('Invalid email or password.'))
     renderLogin()
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'wrong' } })
     fireEvent.change(document.querySelector('input[type="password"]'), { target: { value: 'wrong' } })
     fireEvent.click(screen.getByRole('button'))
-    expect(screen.getByText(/invalid username or password/i)).toBeInTheDocument()
+    expect(await screen.findByText(/invalid email or password/i)).toBeInTheDocument()
   })
 
-  it('does not call onLogin for invalid credentials', () => {
+  it('does not call onLogin for invalid credentials', async () => {
     const onLogin = vi.fn()
+    mocks.login.mockRejectedValue(new Error('Invalid email or password.'))
     renderLogin(onLogin)
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'wrong' } })
     fireEvent.change(document.querySelector('input[type="password"]'), { target: { value: 'wrong' } })
     fireEvent.click(screen.getByRole('button'))
-    expect(onLogin).not.toHaveBeenCalled()
+    await waitFor(() => expect(onLogin).not.toHaveBeenCalled())
   })
 })

@@ -19,6 +19,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class JobCodeService {
+    private static final int RANK_OFFSET_BUFFER = 1000;
 
     private final JobCodeRepository jobCodeRepository;
     private final EmployeeJobCodeRepository employeeJobCodeRepository;
@@ -32,6 +33,7 @@ public class JobCodeService {
                 .toList();
     }
 
+    @Transactional
     public JobCodeResponse upsertJobCode(Long restaurantId, UpsertJobCodeRequest request) {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
@@ -47,18 +49,13 @@ public class JobCodeService {
                 throw new IllegalArgumentException("Job code name already in use");
             }
 
-            if (jobCodeRepository.existsByRestaurantIdAndRankAndIdNot(restaurantId, request.getRank(), jobCode.getId())) {
-                throw new IllegalArgumentException("Job code rank already in use");
-            }
+            moveExistingRankIfNeeded(restaurantId, jobCode, request.getRank());
         } else {
             if (jobCodeRepository.existsByRestaurantIdAndName(restaurantId, normalizedName)) {
                 throw new IllegalArgumentException("Job code name already in use");
             }
 
-            if (jobCodeRepository.existsByRestaurantIdAndRank(restaurantId, request.getRank())) {
-                throw new IllegalArgumentException("Job code rank already in use");
-            }
-
+            openRankForInsert(restaurantId, request.getRank());
             jobCode = new JobCode();
             jobCode.setRestaurant(restaurant);
         }
@@ -67,6 +64,17 @@ public class JobCodeService {
         jobCode.setRank(request.getRank());
 
         return toJobCodeResponse(jobCodeRepository.save(jobCode));
+    }
+
+    @Transactional
+    public void deleteJobCode(Long restaurantId, Long jobCodeId) {
+        JobCode jobCode = jobCodeRepository.findByIdAndRestaurantId(jobCodeId, restaurantId)
+                .orElseThrow(() -> new EntityNotFoundException("Job code not found"));
+        Integer deletedRank = jobCode.getRank();
+
+        jobCodeRepository.delete(jobCode);
+        jobCodeRepository.flush();
+        closeRankAfterDelete(restaurantId, deletedRank);
     }
 
     @Transactional(readOnly = true)
@@ -159,5 +167,74 @@ public class JobCodeService {
 
     private String normalizeRoleName(String value) {
         return value.trim().toUpperCase();
+    }
+
+    private void openRankForInsert(Long restaurantId, Integer rank) {
+        int offset = rankOffset(restaurantId);
+        jobCodeRepository.offsetRanksAtOrAbove(restaurantId, rank, offset);
+        jobCodeRepository.normalizeOffsetRanksAtOrAbove(restaurantId, rank + offset, offset, 1);
+    }
+
+    private void closeRankAfterDelete(Long restaurantId, Integer deletedRank) {
+        int offset = rankOffset(restaurantId);
+        int firstRankAboveDeleted = deletedRank + 1;
+        jobCodeRepository.offsetRanksAtOrAbove(restaurantId, firstRankAboveDeleted, offset);
+        jobCodeRepository.normalizeOffsetRanksAtOrAbove(
+                restaurantId,
+                firstRankAboveDeleted + offset,
+                offset,
+                -1
+        );
+    }
+
+    private void moveExistingRankIfNeeded(Long restaurantId, JobCode jobCode, Integer newRank) {
+        Integer currentRank = jobCode.getRank();
+        if (currentRank.equals(newRank)) {
+            return;
+        }
+
+        int offset = rankOffset(restaurantId);
+        jobCode.setRank(currentRank + offset);
+        jobCodeRepository.saveAndFlush(jobCode);
+
+        if (newRank < currentRank) {
+            shiftRanksUpBetween(restaurantId, newRank, currentRank - 1, offset);
+        } else {
+            shiftRanksDownBetween(restaurantId, currentRank + 1, newRank, offset);
+        }
+    }
+
+    private void shiftRanksUpBetween(Long restaurantId, Integer startRank, Integer endRank, Integer offset) {
+        if (startRank > endRank) {
+            return;
+        }
+
+        jobCodeRepository.offsetRanksBetween(restaurantId, startRank, endRank, offset);
+        jobCodeRepository.normalizeOffsetRanksBetween(
+                restaurantId,
+                startRank + offset,
+                endRank + offset,
+                offset,
+                1
+        );
+    }
+
+    private void shiftRanksDownBetween(Long restaurantId, Integer startRank, Integer endRank, Integer offset) {
+        if (startRank > endRank) {
+            return;
+        }
+
+        jobCodeRepository.offsetRanksBetween(restaurantId, startRank, endRank, offset);
+        jobCodeRepository.normalizeOffsetRanksBetween(
+                restaurantId,
+                startRank + offset,
+                endRank + offset,
+                offset,
+                -1
+        );
+    }
+
+    private int rankOffset(Long restaurantId) {
+        return jobCodeRepository.findMaxRankByRestaurantId(restaurantId) + RANK_OFFSET_BUFFER;
     }
 }

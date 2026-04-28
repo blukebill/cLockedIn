@@ -129,6 +129,29 @@ class AvailabilityServiceTest {
                 .hasMessageContaining("Employee does not belong to this restaurant");
     }
 
+    @Test
+    void managerCanUpdateEmployeeAvailability() {
+        User employee = user(5L, restaurant(1L));
+        UpsertAvailabilityRequest request = availabilityRequest(
+                DayOfWeek.TUESDAY,
+                true,
+                LocalTime.of(10, 0),
+                LocalTime.of(18, 0)
+        );
+        when(userRepository.findById(5L)).thenReturn(Optional.of(employee));
+        when(availabilityRepository.findByEmployeeIdAndDayOfWeek(5L, DayOfWeek.TUESDAY))
+                .thenReturn(Optional.empty());
+        when(availabilityRepository.save(any(Availability.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AvailabilityResponse response = service.upsertEmployeeAvailabilityForManager(1L, 5L, request);
+
+        assertThat(response.getEmployeeId()).isEqualTo(5L);
+        assertThat(response.getDayOfWeek()).isEqualTo(DayOfWeek.TUESDAY);
+        assertThat(response.isAvailable()).isTrue();
+        assertThat(response.getStartTime()).isEqualTo(LocalTime.of(10, 0));
+        assertThat(response.getEndTime()).isEqualTo(LocalTime.of(18, 0));
+    }
+
     private UpsertAvailabilityRequest availabilityRequest(
             DayOfWeek dayOfWeek,
             boolean available,

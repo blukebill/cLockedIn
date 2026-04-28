@@ -60,4 +60,18 @@ public class AvailabilityController {
                 employeeId
         );
     }
+
+    @PutMapping("/employee/{employeeId}")
+    @PreAuthorize("hasRole('MANAGER')")
+    public AvailabilityResponse upsertEmployeeAvailability(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long employeeId,
+            @Valid @RequestBody UpsertAvailabilityRequest request
+    ) {
+        return availabilityService.upsertEmployeeAvailabilityForManager(
+                userDetails.getRestaurantId(),
+                employeeId,
+                request
+        );
+    }
 }

@@ -37,6 +37,15 @@ public class JobCodeController {
     }
 
     @PreAuthorize("hasRole('MANAGER')")
+    @DeleteMapping("/job-codes/{jobCodeId}")
+    public void deleteJobCode(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long jobCodeId
+    ) {
+        jobCodeService.deleteJobCode(userDetails.getRestaurantId(), jobCodeId);
+    }
+
+    @PreAuthorize("hasRole('MANAGER')")
     @GetMapping("/employee-job-codes")
     public List<EmployeeJobCodeResponse> getEmployeeJobCodes(
             @AuthenticationPrincipal CustomUserDetails userDetails

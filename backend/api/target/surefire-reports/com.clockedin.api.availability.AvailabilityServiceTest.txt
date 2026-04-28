@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.clockedin.api.availability.AvailabilityServiceTest
 -------------------------------------------------------------------------------
-Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.753 s -- in com.clockedin.api.availability.AvailabilityServiceTest
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 10.96 s -- in com.clockedin.api.availability.AvailabilityServiceTest

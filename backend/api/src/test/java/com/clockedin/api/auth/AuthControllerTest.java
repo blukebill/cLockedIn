@@ -43,7 +43,7 @@ class AuthControllerTest {
     void loginIsAccessibleWithoutAuthentication() throws Exception {
         LoginRequest request = new LoginRequest("manager@example.com", "password123");
         when(authService.login(request)).thenReturn(
-                new LoginResponse("jwt-token", 1L, "manager@example.com", "MANAGER", 1L)
+                new LoginResponse("jwt-token", 1L, "Manager One", "manager@example.com", "MANAGER", 1L, "Demo Grill")
         );
 
         mockMvc.perform(post("/auth/login")

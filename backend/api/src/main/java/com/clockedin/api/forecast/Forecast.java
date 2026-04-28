@@ -39,6 +39,9 @@ public class Forecast {
     @Column(name = "projected_sales", nullable = false, precision = 10, scale = 2)
     private BigDecimal projectedSales;
 
+    @Column(name = "open", nullable = false)
+    private boolean open = true;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

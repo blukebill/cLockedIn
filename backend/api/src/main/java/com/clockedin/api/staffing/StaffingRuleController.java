@@ -51,4 +51,16 @@ public class StaffingRuleController {
 
         return staffingRuleService.upsertRule(restaurantId, request);
     }
+
+    @PreAuthorize("hasRole('MANAGER')")
+    @DeleteMapping("/{ruleId}")
+    public void deleteRule(
+            @PathVariable Long ruleId,
+            Authentication authentication
+    ) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        Long restaurantId = userDetails.getRestaurantId();
+
+        staffingRuleService.deleteRule(restaurantId, ruleId);
+    }
 }

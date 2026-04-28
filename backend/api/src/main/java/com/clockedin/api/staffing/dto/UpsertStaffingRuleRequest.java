@@ -1,7 +1,6 @@
 package com.clockedin.api.staffing.dto;
 
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,13 +13,14 @@ import java.time.DayOfWeek;
 @NoArgsConstructor
 public class UpsertStaffingRuleRequest {
 
+    private Long id;
+
     @NotNull
     private DayOfWeek dayOfWeek;
 
-    @NotBlank
-    private String role;
-
     @NotNull
+    private Long jobCodeId;
+
     @Min(value = 0, message = "requiredCount must be non-negative")
     private Integer requiredCount;
 

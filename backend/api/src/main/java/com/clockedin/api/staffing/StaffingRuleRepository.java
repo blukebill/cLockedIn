@@ -8,9 +8,15 @@ import java.util.Optional;
 
 public interface StaffingRuleRepository extends JpaRepository<StaffingRule, Long> {
 
-    List<StaffingRule> findByRestaurantIdOrderByDayOfWeekAscRoleAsc(Long restaurantId);
+    Optional<StaffingRule> findByIdAndRestaurantId(Long id, Long restaurantId);
 
-    List<StaffingRule> findByRestaurantIdAndDayOfWeekOrderByRoleAsc(Long restaurantId, DayOfWeek dayOfWeek);
+    List<StaffingRule> findByRestaurantIdOrderByDayOfWeekAscJobCodeRankAsc(Long restaurantId);
 
-    Optional<StaffingRule> findByRestaurantIdAndDayOfWeekAndRole(Long restaurantId, DayOfWeek dayOfWeek, String role);
+    List<StaffingRule> findByRestaurantIdAndDayOfWeekOrderByJobCodeRankAsc(Long restaurantId, DayOfWeek dayOfWeek);
+
+    Optional<StaffingRule> findByRestaurantIdAndDayOfWeekAndJobCodeId(
+            Long restaurantId,
+            DayOfWeek dayOfWeek,
+            Long jobCodeId
+    );
 }

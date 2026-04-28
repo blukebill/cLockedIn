@@ -13,6 +13,7 @@ public class ForecastResponse {
     private Long id;
     private LocalDate date;
     private BigDecimal projectedSales;
+    private Boolean open;
     private BigDecimal averagePricePerHead;
     private Integer projectedHeads;
     private List<ForecastStaffingRequirementResponse> staffingRequirements;

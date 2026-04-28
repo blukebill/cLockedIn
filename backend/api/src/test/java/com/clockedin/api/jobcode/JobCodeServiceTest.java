@@ -47,7 +47,7 @@ class JobCodeServiceTest {
         Restaurant restaurant = restaurant(1L);
         when(restaurantRepository.findById(1L)).thenReturn(Optional.of(restaurant));
         when(jobCodeRepository.existsByRestaurantIdAndName(1L, "COOK")).thenReturn(false);
-        when(jobCodeRepository.existsByRestaurantIdAndRank(1L, 1)).thenReturn(false);
+        when(jobCodeRepository.findMaxRankByRestaurantId(1L)).thenReturn(0);
         when(jobCodeRepository.save(any(JobCode.class))).thenAnswer(invocation -> {
             JobCode jobCode = invocation.getArgument(0);
             jobCode.setId(10L);
@@ -71,20 +71,24 @@ class JobCodeServiceTest {
     }
 
     @Test
-    void uniqueRankPerRestaurantIsEnforced() {
+    void insertShiftsExistingRanksAtOrAboveRequestedRank() {
         when(restaurantRepository.findById(1L)).thenReturn(Optional.of(restaurant(1L)));
         when(jobCodeRepository.existsByRestaurantIdAndName(1L, "COOK")).thenReturn(false);
-        when(jobCodeRepository.existsByRestaurantIdAndRank(1L, 1)).thenReturn(true);
+        when(jobCodeRepository.findMaxRankByRestaurantId(1L)).thenReturn(5);
+        when(jobCodeRepository.save(any(JobCode.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertThatThrownBy(() -> service.upsertJobCode(1L, upsertRequest(null, "cook", 1)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Job code rank already in use");
+        service.upsertJobCode(1L, upsertRequest(null, "cook", 4));
+
+        verify(jobCodeRepository).offsetRanksAtOrAbove(1L, 4, 1005);
+        verify(jobCodeRepository).normalizeOffsetRanksAtOrAbove(1L, 1009, 1005, 1);
     }
 
     @Test
     void sameNameAndRankAcrossDifferentRestaurantsIsAllowedByRestaurantScopedChecks() {
         when(restaurantRepository.findById(1L)).thenReturn(Optional.of(restaurant(1L)));
         when(restaurantRepository.findById(2L)).thenReturn(Optional.of(restaurant(2L)));
+        when(jobCodeRepository.findMaxRankByRestaurantId(1L)).thenReturn(0);
+        when(jobCodeRepository.findMaxRankByRestaurantId(2L)).thenReturn(0);
         when(jobCodeRepository.save(any(JobCode.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.upsertJobCode(1L, upsertRequest(null, "cook", 1));
@@ -92,8 +96,42 @@ class JobCodeServiceTest {
 
         verify(jobCodeRepository).existsByRestaurantIdAndName(1L, "COOK");
         verify(jobCodeRepository).existsByRestaurantIdAndName(2L, "COOK");
-        verify(jobCodeRepository).existsByRestaurantIdAndRank(1L, 1);
-        verify(jobCodeRepository).existsByRestaurantIdAndRank(2L, 1);
+    }
+
+    @Test
+    void updatingJobCodeToLowerRankShiftsIntermediateRanksUp() {
+        Restaurant restaurant = restaurant(1L);
+        JobCode jobCode = jobCode(10L, restaurant, "BAR", 5);
+        when(restaurantRepository.findById(1L)).thenReturn(Optional.of(restaurant));
+        when(jobCodeRepository.findByIdAndRestaurantId(10L, 1L)).thenReturn(Optional.of(jobCode));
+        when(jobCodeRepository.existsByRestaurantIdAndNameAndIdNot(1L, "BAR", 10L)).thenReturn(false);
+        when(jobCodeRepository.findMaxRankByRestaurantId(1L)).thenReturn(5);
+        when(jobCodeRepository.saveAndFlush(jobCode)).thenReturn(jobCode);
+        when(jobCodeRepository.save(jobCode)).thenReturn(jobCode);
+
+        JobCodeResponse response = service.upsertJobCode(1L, upsertRequest(10L, "bar", 3));
+
+        assertThat(response.rank()).isEqualTo(3);
+        verify(jobCodeRepository).offsetRanksBetween(1L, 3, 4, 1005);
+        verify(jobCodeRepository).normalizeOffsetRanksBetween(1L, 1008, 1009, 1005, 1);
+    }
+
+    @Test
+    void updatingJobCodeToHigherRankShiftsIntermediateRanksDown() {
+        Restaurant restaurant = restaurant(1L);
+        JobCode jobCode = jobCode(10L, restaurant, "RUNNER", 2);
+        when(restaurantRepository.findById(1L)).thenReturn(Optional.of(restaurant));
+        when(jobCodeRepository.findByIdAndRestaurantId(10L, 1L)).thenReturn(Optional.of(jobCode));
+        when(jobCodeRepository.existsByRestaurantIdAndNameAndIdNot(1L, "RUNNER", 10L)).thenReturn(false);
+        when(jobCodeRepository.findMaxRankByRestaurantId(1L)).thenReturn(5);
+        when(jobCodeRepository.saveAndFlush(jobCode)).thenReturn(jobCode);
+        when(jobCodeRepository.save(jobCode)).thenReturn(jobCode);
+
+        JobCodeResponse response = service.upsertJobCode(1L, upsertRequest(10L, "runner", 4));
+
+        assertThat(response.rank()).isEqualTo(4);
+        verify(jobCodeRepository).offsetRanksBetween(1L, 3, 4, 1005);
+        verify(jobCodeRepository).normalizeOffsetRanksBetween(1L, 1008, 1009, 1005, -1);
     }
 
     @Test
@@ -150,6 +188,21 @@ class JobCodeServiceTest {
         service.removeEmployeeJobCode(1L, 5L, 10L);
 
         verify(employeeJobCodeRepository).delete(assignment);
+    }
+
+    @Test
+    void deleteJobCodeDeletesRestaurantScopedJobCode() {
+        Restaurant restaurant = restaurant(1L);
+        JobCode jobCode = jobCode(10L, restaurant, "COOK", 1);
+        when(jobCodeRepository.findByIdAndRestaurantId(10L, 1L)).thenReturn(Optional.of(jobCode));
+        when(jobCodeRepository.findMaxRankByRestaurantId(1L)).thenReturn(5);
+
+        service.deleteJobCode(1L, 10L);
+
+        verify(jobCodeRepository).delete(jobCode);
+        verify(jobCodeRepository).flush();
+        verify(jobCodeRepository).offsetRanksAtOrAbove(1L, 2, 1005);
+        verify(jobCodeRepository).normalizeOffsetRanksAtOrAbove(1L, 1007, 1005, -1);
     }
 
     @Test

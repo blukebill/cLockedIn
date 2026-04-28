@@ -32,9 +32,10 @@ public class ForecastService {
                     newForecast.setRestaurantId(restaurantId);
                     newForecast.setForecastDate(date);
                     return newForecast;
-                });
+        });
 
         forecast.setProjectedSales(request.getProjectedSales());
+        forecast.setOpen(request.getOpen());
 
         Forecast saved = forecastRepository.save(forecast);
         return toResponse(saved, getAveragePricePerHead(restaurantId));
@@ -56,20 +57,29 @@ public class ForecastService {
     }
 
     private ForecastResponse toResponse(Forecast forecast, BigDecimal averagePricePerHead) {
-        Integer projectedHeads = calculateProjectedHeads(forecast.getProjectedSales(), averagePricePerHead);
-        List<ForecastStaffingRequirementResponse> staffingRequirements = staffingRuleRepository
-                .findByRestaurantIdAndDayOfWeekOrderByRoleAsc(
+        Integer projectedHeads = forecast.isOpen()
+                ? calculateProjectedHeads(forecast.getProjectedSales(), averagePricePerHead)
+                : Integer.valueOf(0);
+        List<StaffingRule> staffingRules = forecast.isOpen()
+                ? staffingRuleRepository
+                .findByRestaurantIdAndDayOfWeekOrderByJobCodeRankAsc(
                         forecast.getRestaurantId(),
                         forecast.getForecastDate().getDayOfWeek()
                 )
+                : List.of();
+        List<ForecastStaffingRequirementResponse> staffingRequirements = staffingRules
                 .stream()
-                .map(rule -> toStaffingRequirement(rule, projectedHeads))
+                .map(rule -> toStaffingRequirement(
+                        rule,
+                        calculateProjectedHeadsForRule(forecast.getProjectedSales(), averagePricePerHead, staffingRules.size())
+                ))
                 .toList();
 
         return new ForecastResponse(
                 forecast.getId(),
                 forecast.getForecastDate(),
                 forecast.getProjectedSales(),
+                forecast.isOpen(),
                 averagePricePerHead,
                 projectedHeads,
                 staffingRequirements
@@ -90,16 +100,34 @@ public class ForecastService {
         return projectedSales.divide(averagePricePerHead, 0, RoundingMode.CEILING).intValue();
     }
 
+    private Integer calculateProjectedHeadsForRule(
+            BigDecimal projectedSales,
+            BigDecimal averagePricePerHead,
+            int staffingRuleCount
+    ) {
+        if (staffingRuleCount == 0 || averagePricePerHead == null) {
+            return null;
+        }
+
+        BigDecimal projectedSalesShare = projectedSales.divide(
+                BigDecimal.valueOf(staffingRuleCount),
+                2,
+                RoundingMode.HALF_UP
+        );
+        return calculateProjectedHeads(projectedSalesShare, averagePricePerHead);
+    }
+
     private ForecastStaffingRequirementResponse toStaffingRequirement(StaffingRule rule, Integer projectedHeads) {
         Integer perHeadRequiredCount = calculatePerHeadRequiredCount(projectedHeads, rule.getHeadsPerEmployee());
-        Integer requiredCount = perHeadRequiredCount == null
-                ? rule.getRequiredCount()
-                : Math.max(rule.getRequiredCount(), perHeadRequiredCount);
+        Integer requiredCount = perHeadRequiredCount == null ? 0 : perHeadRequiredCount;
 
         return new ForecastStaffingRequirementResponse(
-                rule.getRole(),
-                rule.getRequiredCount(),
+                rule.getJobCode().getId(),
+                rule.getJobCode().getName(),
+                rule.getJobCode().getRank(),
+                0,
                 rule.getHeadsPerEmployee(),
+                projectedHeads,
                 requiredCount
         );
     }

@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 import ManagerDashboard from '../src/pages/ManagerDashboard'
 
 const renderManagerDashboard = (setPage = vi.fn()) =>
-  render(<ManagerDashboard setPage={setPage} />)
+  render(<ManagerDashboard setPage={setPage} user={{ userId: 1, name: 'Manager One', role: 'MANAGER' }} />)
 
 describe('Manager Dashboard', () => {
 
@@ -14,9 +14,9 @@ describe('Manager Dashboard', () => {
     expect(document.body).toBeTruthy()
   })
 
-  it('displays the demo manager name', () => {
+  it('displays the manager name', () => {
     renderManagerDashboard()
-    expect(screen.getAllByText(/tony n\./i)[0]).toBeInTheDocument()
+    expect(screen.getAllByText(/manager one/i)[0]).toBeInTheDocument()
   })
 
   it('renders a schedule section', () => {

@@ -1,11 +1,12 @@
 package com.clockedin.api.forecast;
 
 import com.clockedin.api.forecast.dto.ForecastResponse;
+import com.clockedin.api.forecast.dto.UpsertForecastRequest;
+import com.clockedin.api.jobcode.JobCode;
 import com.clockedin.api.restaurant.Restaurant;
 import com.clockedin.api.restaurant.RestaurantRepository;
 import com.clockedin.api.staffing.StaffingRule;
 import com.clockedin.api.staffing.StaffingRuleRepository;
-import com.clockedin.api.forecast.dto.UpsertForecastRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -44,8 +45,8 @@ class ForecastServiceTest {
         UpsertForecastRequest request = request("1200.00");
         when(forecastRepository.findByRestaurantIdAndForecastDate(1L, date)).thenReturn(Optional.empty());
         when(restaurantRepository.findById(1L)).thenReturn(Optional.of(restaurant(1L, "20.00")));
-        when(staffingRuleRepository.findByRestaurantIdAndDayOfWeekOrderByRoleAsc(1L, DayOfWeek.MONDAY))
-                .thenReturn(List.of(rule("COOK", 2, null), rule("SERVER", 2, 25)));
+        when(staffingRuleRepository.findByRestaurantIdAndDayOfWeekOrderByJobCodeRankAsc(1L, DayOfWeek.MONDAY))
+                .thenReturn(List.of(rule(jobCode(10L, "COOK", 1), 2, null), rule(jobCode(11L, "SERVER", 2), 2, 25)));
         when(forecastRepository.save(any(Forecast.class))).thenAnswer(invocation -> {
             Forecast forecast = invocation.getArgument(0);
             forecast.setId(10L);
@@ -57,13 +58,14 @@ class ForecastServiceTest {
         assertThat(response.getId()).isEqualTo(10L);
         assertThat(response.getDate()).isEqualTo(date);
         assertThat(response.getProjectedSales()).isEqualByComparingTo("1200.00");
+        assertThat(response.getOpen()).isTrue();
         assertThat(response.getAveragePricePerHead()).isEqualByComparingTo("20.00");
         assertThat(response.getProjectedHeads()).isEqualTo(60);
         assertThat(response.getStaffingRequirements())
-                .extracting("role", "baseRequiredCount", "headsPerEmployee", "requiredCount")
+                .extracting("jobCodeName", "baseRequiredCount", "headsPerEmployee", "projectedHeads", "requiredCount")
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple("COOK", 2, null, 2),
-                        org.assertj.core.groups.Tuple.tuple("SERVER", 2, 25, 3)
+                        org.assertj.core.groups.Tuple.tuple("COOK", 0, null, 30, 0),
+                        org.assertj.core.groups.Tuple.tuple("SERVER", 0, 25, 30, 2)
                 );
     }
 
@@ -73,7 +75,7 @@ class ForecastServiceTest {
         Forecast existing = forecast(10L, 1L, date, "1000.00");
         when(forecastRepository.findByRestaurantIdAndForecastDate(1L, date)).thenReturn(Optional.of(existing));
         when(restaurantRepository.findById(1L)).thenReturn(Optional.of(restaurant(1L, null)));
-        when(staffingRuleRepository.findByRestaurantIdAndDayOfWeekOrderByRoleAsc(1L, DayOfWeek.MONDAY))
+        when(staffingRuleRepository.findByRestaurantIdAndDayOfWeekOrderByJobCodeRankAsc(1L, DayOfWeek.MONDAY))
                 .thenReturn(List.of());
         when(forecastRepository.save(existing)).thenReturn(existing);
 
@@ -96,10 +98,10 @@ class ForecastServiceTest {
                 start,
                 start.plusDays(6)
         )).thenReturn(List.of(monday, tuesday));
-        when(staffingRuleRepository.findByRestaurantIdAndDayOfWeekOrderByRoleAsc(2L, DayOfWeek.MONDAY))
-                .thenReturn(List.of(rule("SERVER", 1, 20)));
-        when(staffingRuleRepository.findByRestaurantIdAndDayOfWeekOrderByRoleAsc(2L, DayOfWeek.TUESDAY))
-                .thenReturn(List.of(rule("SERVER", 1, 20)));
+        when(staffingRuleRepository.findByRestaurantIdAndDayOfWeekOrderByJobCodeRankAsc(2L, DayOfWeek.MONDAY))
+                .thenReturn(List.of(rule(jobCode(11L, "SERVER", 2), 1, 20)));
+        when(staffingRuleRepository.findByRestaurantIdAndDayOfWeekOrderByJobCodeRankAsc(2L, DayOfWeek.TUESDAY))
+                .thenReturn(List.of(rule(jobCode(11L, "SERVER", 2), 1, 20)));
 
         List<ForecastResponse> responses = forecastService.getWeekForecast(2L, start);
 
@@ -116,6 +118,7 @@ class ForecastServiceTest {
     private UpsertForecastRequest request(String projectedSales) {
         UpsertForecastRequest request = new UpsertForecastRequest();
         request.setProjectedSales(new BigDecimal(projectedSales));
+        request.setOpen(true);
         return request;
     }
 
@@ -128,13 +131,21 @@ class ForecastServiceTest {
         return restaurant;
     }
 
-    private StaffingRule rule(String role, int requiredCount, Integer headsPerEmployee) {
+    private StaffingRule rule(JobCode jobCode, int requiredCount, Integer headsPerEmployee) {
         StaffingRule rule = new StaffingRule();
         rule.setRestaurantId(1L);
-        rule.setRole(role);
+        rule.setJobCode(jobCode);
         rule.setRequiredCount(requiredCount);
         rule.setHeadsPerEmployee(headsPerEmployee);
         return rule;
+    }
+
+    private JobCode jobCode(Long id, String name, int rank) {
+        JobCode jobCode = new JobCode();
+        jobCode.setId(id);
+        jobCode.setName(name);
+        jobCode.setRank(rank);
+        return jobCode;
     }
 
     private Forecast forecast(Long id, Long restaurantId, LocalDate date, String projectedSales) {
@@ -143,6 +154,7 @@ class ForecastServiceTest {
         forecast.setRestaurantId(restaurantId);
         forecast.setForecastDate(date);
         forecast.setProjectedSales(new BigDecimal(projectedSales));
+        forecast.setOpen(true);
         return forecast;
     }
 }

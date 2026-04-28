@@ -15,6 +15,8 @@ public interface EmployeeJobCodeRepository extends JpaRepository<EmployeeJobCode
 
     List<EmployeeJobCode> findByRestaurantIdOrderByEmployeeIdAsc(Long restaurantId);
 
+    List<EmployeeJobCode> findByRestaurantIdAndJobCodeIdOrderByEmployeeIdAsc(Long restaurantId, Long jobCodeId);
+
     List<EmployeeJobCode> findByRestaurantIdAndEmployeeIdOrderByJobCodeRankAsc(Long restaurantId, Long employeeId);
 
     void deleteByRestaurantIdAndEmployeeIdAndJobCodeId(Long restaurantId, Long employeeId, Long jobCodeId);

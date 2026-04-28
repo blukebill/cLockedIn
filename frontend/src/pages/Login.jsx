@@ -1,22 +1,22 @@
 import { useState, useEffect } from 'react'
-
-const CREDENTIALS = {
-    admin: { password: 'admin' , role: 'manager' },
-    user: { password: 'user', role: 'employee' }
-}
+import { authApi } from '../services/api'
 
 function Login({ onLogin }) {
-    const [username, setUsername] = useState('')
+    const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
-    const handleSubmit = () => {
-        const match = CREDENTIALS[username]
-        if (match && match.password === password) {
+    const handleSubmit = async () => {
+        setIsSubmitting(true)
+        try {
+            const user = await authApi.login(email, password)
             setError('')
-            onLogin(match.role)
-        } else {
-            setError('Invalid username or password.')
+            onLogin(user)
+        } catch (err) {
+            setError(err.message || 'Invalid email or password.')
+        } finally {
+            setIsSubmitting(false)
         }
     }
 
@@ -65,14 +65,14 @@ function Login({ onLogin }) {
                 {/* Username */}
                 <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">
-                        Username
+                        Email
                     </label>
                     <input
                       type="text"
-                      value={username}
-                      onChange={e => setUsername(e.target.value)}
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      placeholder="Enter your username"
+                      placeholder="Enter your email"
                       className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                 </div>
@@ -95,9 +95,10 @@ function Login({ onLogin }) {
                 {/* Submit Button */}
                 <button
                   onClick={handleSubmit}
+                  disabled={isSubmitting}
                   className="w-full py-3 rounded-lg bg-green-600 hover:bg-green-700 active:sacle-95 text-white font-semibold text-sm transition-all"
                 >
-                    Sign In
+                    {isSubmitting ? 'Signing in...' : 'Sign In'}
                 </button>
             </div>
         </div>

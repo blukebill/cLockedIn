@@ -10,7 +10,9 @@ import java.time.DayOfWeek;
 public class StaffingRuleResponse {
     private Long id;
     private DayOfWeek dayOfWeek;
-    private String role;
+    private Long jobCodeId;
+    private String jobCodeName;
+    private Integer jobCodeRank;
     private Integer requiredCount;
     private Integer headsPerEmployee;
 }

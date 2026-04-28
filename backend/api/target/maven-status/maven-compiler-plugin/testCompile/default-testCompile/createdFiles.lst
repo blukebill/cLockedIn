@@ -7,11 +7,13 @@ com/clockedin/api/staffing/StaffingRuleServiceTest.class
 com/clockedin/api/restaurant/RestaurantControllerTest$TestSecurityConfig.class
 com/clockedin/api/timeoff/TimeOffRequestControllerTest$TestSecurityConfig.class
 com/clockedin/api/timeoff/TimeOffRequestServiceTest.class
+com/clockedin/api/schedule/ShiftTemplateServiceTest.class
 com/clockedin/api/jobcode/JobCodeServiceTest.class
 com/clockedin/api/staffing/StaffingRuleControllerTest.class
 com/clockedin/api/ApiApplicationTests.class
 com/clockedin/api/rolepriority/EmployeeRolePriorityServiceTest.class
 com/clockedin/api/restaurant/RestaurantServiceTest.class
+com/clockedin/api/schedule/ScheduleGenerationServiceTest.class
 com/clockedin/api/auth/JwtServiceTest.class
 com/clockedin/api/auth/AuthServiceTest.class
 com/clockedin/api/availability/AvailabilityServiceTest.class

@@ -8,6 +8,8 @@
 /home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/restaurant/RestaurantControllerTest.java
 /home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/restaurant/RestaurantServiceTest.java
 /home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/rolepriority/EmployeeRolePriorityServiceTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/schedule/ScheduleGenerationServiceTest.java
+/home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/schedule/ShiftTemplateServiceTest.java
 /home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/staffing/StaffingRuleControllerTest.java
 /home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/staffing/StaffingRuleServiceTest.java
 /home/augur/cLockedIn/backend/api/src/test/java/com/clockedin/api/timeoff/TimeOffRequestControllerTest.java

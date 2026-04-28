@@ -16,4 +16,7 @@ public class UpsertForecastRequest {
     @NotNull
     @DecimalMin(value = "0.0", inclusive = true, message = "projectedSales must be non-negative")
     private BigDecimal projectedSales;
+
+    @NotNull
+    private Boolean open;
 }

@@ -1,5 +1,6 @@
 package com.clockedin.api.staffing;
 
+import com.clockedin.api.jobcode.JobCode;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,8 +16,8 @@ import java.time.LocalDateTime;
     name = "staffing_rule",
     uniqueConstraints = {
         @UniqueConstraint(
-            name = "uq_staffing_rule_restaurant_day_role",
-            columnNames = {"restaurant_id", "day_of_week", "role"}
+            name = "uq_staffing_rule_restaurant_day_job_code",
+            columnNames = {"restaurant_id", "day_of_week", "job_code_id"}
         )
     }
 )
@@ -36,8 +37,9 @@ public class StaffingRule {
     @Column(name = "day_of_week", nullable = false, length = 20)
     private DayOfWeek dayOfWeek;
 
-    @Column(name = "role", nullable = false, length = 100)
-    private String role;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "job_code_id", nullable = false)
+    private JobCode jobCode;
 
     @Column(name = "required_count", nullable = false)
     private Integer requiredCount;

@@ -1,15 +1,28 @@
-import { scheduleData } from '../constants/scheduleData'
-import { roleColors } from '../constants/roleColors'
+import { useEffect, useState } from 'react'
+import { getJobCodeColor } from '../constants/roleColors'
 import { getWeekDates } from '../utils/dateUtils'
 import { parseShiftStart, parseShiftEnd, calculateHours } from '../utils/scheduleUtils'
+import { schedulesApi } from '../services/api'
+import { scheduleToShifts, weekStartForOffset } from '../utils/apiScheduleAdapter'
 
-const DEMO_EMPLOYEE = 'Marcus J.'
-
-function EmployeeDashboard({ setPage }) {
+function EmployeeDashboard({ setPage, user, scheduleVersion }) {
   const weekDates = getWeekDates()
   const now = new Date()
+  const [schedule, setSchedule] = useState(null)
+  const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
 
-  const myShifts = scheduleData.filter(s => s.employee === DEMO_EMPLOYEE)
+  useEffect(() => {
+    schedulesApi.getMyWeek(weekStartForOffset(0))
+      .then(setSchedule)
+      .catch(err => {
+        if (err.status !== 404) setError(err.message || 'Unable to load schedule.')
+        setSchedule(null)
+      })
+      .finally(() => setIsLoading(false))
+  }, [scheduleVersion])
+
+  const myShifts = scheduleToShifts(schedule)
 
   const totalHours = myShifts.reduce((sum, shift) => {
     return sum + calculateHours(shift.startTime, shift.endTime)
@@ -44,8 +57,11 @@ function EmployeeDashboard({ setPage }) {
         This week ({weekLabel})
       </p>
       <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-6">
-        Welcome back, Employee.
+        Welcome back, {user?.name || 'Employee'}.
       </h1>
+
+      {isLoading && <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Loading schedule...</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400 mb-4">{error}</p>}
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4 mb-8">
@@ -68,7 +84,7 @@ function EmployeeDashboard({ setPage }) {
                 {weekDates[nextShift.day].toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
               </p>
               <span className="inline-block px-2 py-0.5 rounded text-white text-xs mb-1"
-                style={{ backgroundColor: roleColors[nextShift.role] }}>
+                style={{ backgroundColor: getJobCodeColor(nextShift) }}>
                 {nextShift.role}
               </span>
               <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -102,7 +118,7 @@ function EmployeeDashboard({ setPage }) {
             upcomingShifts.map(shift => (
               <div key={shift.id} className="flex items-center gap-3 py-3 border-b border-gray-100 dark:border-gray-700">
                 <div className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: roleColors[shift.role] }} />
+                  style={{ backgroundColor: getJobCodeColor(shift) }} />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {weekDates[shift.day].toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}

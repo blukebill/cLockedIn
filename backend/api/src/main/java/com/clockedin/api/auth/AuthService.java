@@ -34,9 +34,11 @@ public class AuthService {
         return new LoginResponse(
                 token,
                 userDetails.getUserId(),
+                userDetails.getUser().getName(),
                 userDetails.getEmail(),
                 userDetails.getRole(),
-                userDetails.getRestaurantId()
+                userDetails.getRestaurantId(),
+                userDetails.getUser().getRestaurant().getName()
         );
     }
 }

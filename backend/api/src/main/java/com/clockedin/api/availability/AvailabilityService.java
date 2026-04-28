@@ -34,6 +34,23 @@ public class AvailabilityService {
             Long restaurantId,
             UpsertAvailabilityRequest request
     ) {
+        return upsertAvailability(employeeId, restaurantId, request);
+    }
+
+    @Transactional
+    public AvailabilityResponse upsertEmployeeAvailabilityForManager(
+            Long restaurantId,
+            Long employeeId,
+            UpsertAvailabilityRequest request
+    ) {
+        return upsertAvailability(employeeId, restaurantId, request);
+    }
+
+    private AvailabilityResponse upsertAvailability(
+            Long employeeId,
+            Long restaurantId,
+            UpsertAvailabilityRequest request
+    ) {
         validateRequest(request);
 
         User employee = userRepository.findById(employeeId)

@@ -23,9 +23,11 @@ public class AuthController {
     public MeResponse me(@AuthenticationPrincipal CustomUserDetails userDetails) {
         return new MeResponse(
                 userDetails.getUserId(),
+                userDetails.getUser().getName(),
                 userDetails.getEmail(),
                 userDetails.getRole(),
-                userDetails.getRestaurantId()
+                userDetails.getRestaurantId(),
+                userDetails.getUser().getRestaurant().getName()
         );
     }
 }
