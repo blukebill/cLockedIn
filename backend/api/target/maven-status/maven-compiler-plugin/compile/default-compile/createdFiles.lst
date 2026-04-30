@@ -1,10 +1,13 @@
+com/clockedin/api/schedule/dto/UpsertPreferredShiftAssignmentRequest.class
 com/clockedin/api/schedule/ShiftTemplate.class
 com/clockedin/api/availability/AvailabilityService.class
+com/clockedin/api/schedule/PreferredShiftAssignmentController.class
 com/clockedin/api/availability/AvailabilityRepository.class
 com/clockedin/api/schedule/Shift.class
 com/clockedin/api/jobcode/EmployeeJobCode.class
 com/clockedin/api/jobcode/JobCodeService.class
 com/clockedin/api/staffing/StaffingRuleController.class
+com/clockedin/api/schedule/PreferredShiftAssignment.class
 com/clockedin/api/availability/AvailabilityController.class
 com/clockedin/api/schedule/dto/GenerateScheduleRequest.class
 com/clockedin/api/jobcode/dto/UpsertJobCodeRequest.class
@@ -18,6 +21,7 @@ com/clockedin/api/schedule/ScheduleStatus.class
 com/clockedin/api/staffing/StaffingRuleRepository.class
 com/clockedin/api/schedule/ShiftTemplateRepository.class
 com/clockedin/api/schedule/dto/UpsertShiftTemplateRequest.class
+com/clockedin/api/schedule/PreferredShiftAssignmentService.class
 com/clockedin/api/timeoff/TimeOffRequestRepository.class
 com/clockedin/api/forecast/dto/ForecastStaffingRequirementResponse.class
 com/clockedin/api/restaurant/dto/RestaurantSettingsResponse.class
@@ -28,6 +32,7 @@ com/clockedin/api/user/dto/EmployeeResponse.class
 com/clockedin/api/rolepriority/dto/UpsertEmployeeRolePriorityRequest.class
 com/clockedin/api/schedule/ScheduleController.class
 com/clockedin/api/timeoff/TimeOffStatus.class
+com/clockedin/api/schedule/PreferredShiftAssignmentRepository.class
 com/clockedin/api/common/GlobalExceptionHandler.class
 com/clockedin/api/staffing/StaffingRule.class
 com/clockedin/api/availability/Availability.class
@@ -73,6 +78,7 @@ com/clockedin/api/user/dto/UpdateEmployeeRequest.class
 com/clockedin/api/restaurant/RestaurantService.class
 com/clockedin/api/auth/JwtService.class
 com/clockedin/api/ApiApplication.class
+com/clockedin/api/schedule/dto/PreferredShiftAssignmentResponse.class
 com/clockedin/api/jobcode/JobCodeController.class
 com/clockedin/api/jobcode/EmployeeJobCodeRepository.class
 com/clockedin/api/schedule/dto/ScheduleResponse.class

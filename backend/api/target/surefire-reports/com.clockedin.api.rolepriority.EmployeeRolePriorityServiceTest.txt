@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.clockedin.api.rolepriority.EmployeeRolePriorityServiceTest
 -------------------------------------------------------------------------------
-Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.067 s -- in com.clockedin.api.rolepriority.EmployeeRolePriorityServiceTest
+Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.135 s -- in com.clockedin.api.rolepriority.EmployeeRolePriorityServiceTest

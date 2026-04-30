@@ -7,6 +7,8 @@ import java.util.Optional;
 
 public interface EmployeeRolePriorityRepository extends JpaRepository<EmployeeRolePriority, Long> {
 
+    Optional<EmployeeRolePriority> findByIdAndRestaurantId(Long id, Long restaurantId);
+
     List<EmployeeRolePriority> findByRestaurantIdOrderByEmployeeIdAscJobCodeRankAsc(Long restaurantId);
 
     List<EmployeeRolePriority> findByRestaurantIdAndEmployeeIdOrderByJobCodeRankAsc(Long restaurantId, Long employeeId);

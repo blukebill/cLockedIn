@@ -23,6 +23,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -34,6 +35,8 @@ public class ScheduleGenerationService {
     private static final int DEFAULT_ROLE_PRIORITY = 1000;
     private static final int CONSECUTIVE_SAME_SHIFT_PENALTY = 100;
     private static final int HIGHER_SKILL_LOWER_ROLE_PENALTY = 250;
+    private static final int PROTECTED_EMPLOYEE_WEEKLY_TARGET = 5;
+    private static final int PREFERRED_SHIFT_ASSIGNMENT_BONUS = -10000;
 
     private final ScheduleRepository scheduleRepository;
     private final ShiftRepository shiftRepository;
@@ -102,6 +105,8 @@ public class ScheduleGenerationService {
             }
         }
 
+        applyProtectedEmployeeGuarantees(snapshot, generated);
+
         return generated;
     }
 
@@ -114,7 +119,7 @@ public class ScheduleGenerationService {
     }
 
     private Map<Long, List<ShiftTemplate>> templatesByJobCode(SchedulerInputSnapshot snapshot, ForecastResponse forecast) {
-        Map<Long, List<ShiftTemplate>> templates = new HashMap<>();
+        Map<Long, List<ShiftTemplate>> templates = new LinkedHashMap<>();
         snapshot.shiftTemplates().stream()
                 .filter(template -> template.getDayOfWeek() == forecast.getDate().getDayOfWeek())
                 .sorted(Comparator
@@ -223,6 +228,7 @@ public class ScheduleGenerationService {
                 .filter(candidate -> isAvailable(candidate, shift, snapshot.availability()))
                 .filter(candidate -> isNotOnApprovedTimeOff(candidate, shift, snapshot.approvedTimeOff()))
                 .filter(candidate -> hasNoOverlap(candidate, shift, snapshot.existingShifts(), generated))
+                .filter(candidate -> isUnderProtectedWeeklyTarget(candidate, snapshot.existingShifts(), generated))
                 .distinct()
                 .sorted(Comparator
                         .comparingLong((User candidate) -> candidateScoreFor(candidate, shift, snapshot, generated))
@@ -288,8 +294,122 @@ public class ScheduleGenerationService {
         long repeatPenalty = (long) repeatCount
                 * CONSECUTIVE_SAME_SHIFT_PENALTY;
         long skillPenalty = higherSkillLowerRolePenalty(employee, shift, snapshot.employeeJobCodes());
+        long preferredShiftBonus = preferredShiftScoreAdjustment(employee, shift, snapshot.preferredShiftAssignments());
 
-        return rolePriority + repeatPenalty + skillPenalty;
+        return rolePriority + repeatPenalty + skillPenalty + preferredShiftBonus;
+    }
+
+    private long preferredShiftScoreAdjustment(
+            User employee,
+            Shift shift,
+            List<PreferredShiftAssignment> preferredShiftAssignments
+    ) {
+        if (shift.getShiftTemplate() == null) {
+            return 0;
+        }
+
+        boolean hasPreferredAssignment = preferredShiftAssignments.stream()
+                .anyMatch(assignment -> assignment.getEmployee().getId().equals(employee.getId())
+                        && isSameShiftTemplatePattern(assignment.getShiftTemplate(), shift.getShiftTemplate()));
+
+        return hasPreferredAssignment ? PREFERRED_SHIFT_ASSIGNMENT_BONUS : 0;
+    }
+
+    private boolean isSameShiftTemplatePattern(ShiftTemplate preferredTemplate, ShiftTemplate shiftTemplate) {
+        if (preferredTemplate.getId().equals(shiftTemplate.getId())) {
+            return true;
+        }
+
+        if (!preferredTemplate.getJobCode().getId().equals(shiftTemplate.getJobCode().getId())
+                || !preferredTemplate.getStartTime().equals(shiftTemplate.getStartTime())
+                || !preferredTemplate.getEndTime().equals(shiftTemplate.getEndTime())) {
+            return false;
+        }
+
+        String preferredName = normalizedTemplateName(preferredTemplate);
+        String shiftName = normalizedTemplateName(shiftTemplate);
+        return preferredName != null && preferredName.equals(shiftName);
+    }
+
+    private String normalizedTemplateName(ShiftTemplate template) {
+        if (template.getName() == null || template.getName().isBlank()) {
+            return null;
+        }
+
+        return template.getName().trim().toLowerCase();
+    }
+
+    private boolean isUnderProtectedWeeklyTarget(
+            User employee,
+            List<Shift> existingShifts,
+            List<Shift> generatedShifts
+    ) {
+        return !employee.isProtectedEmployee()
+                || weeklyAssignedShiftCount(employee, existingShifts, generatedShifts) < PROTECTED_EMPLOYEE_WEEKLY_TARGET;
+    }
+
+    private long weeklyAssignedShiftCount(
+            User employee,
+            List<Shift> existingShifts,
+            List<Shift> generatedShifts
+    ) {
+        return java.util.stream.Stream.concat(existingShifts.stream(), generatedShifts.stream())
+                .filter(existing -> existing.getEmployee() != null)
+                .filter(existing -> existing.getEmployee().getId().equals(employee.getId()))
+                .filter(existing -> existing.getStatus() == null || existing.getStatus() == ShiftStatus.ASSIGNED)
+                .count();
+    }
+
+    private void applyProtectedEmployeeGuarantees(SchedulerInputSnapshot snapshot, List<Shift> generatedShifts) {
+        snapshot.employees().stream()
+                .filter(User::isProtectedEmployee)
+                .sorted(Comparator.comparing(User::getId))
+                .forEach(employee -> fillProtectedEmployeeTarget(employee, snapshot, generatedShifts));
+    }
+
+    private void fillProtectedEmployeeTarget(
+            User employee,
+            SchedulerInputSnapshot snapshot,
+            List<Shift> generatedShifts
+    ) {
+        while (weeklyAssignedShiftCount(employee, snapshot.existingShifts(), generatedShifts) < PROTECTED_EMPLOYEE_WEEKLY_TARGET) {
+            Optional<Shift> nextShift = bestProtectedGuaranteeShift(employee, snapshot, generatedShifts);
+            if (nextShift.isEmpty()) {
+                return;
+            }
+
+            nextShift.get().setEmployee(employee);
+            nextShift.get().setStatus(ShiftStatus.ASSIGNED);
+        }
+    }
+
+    private Optional<Shift> bestProtectedGuaranteeShift(
+            User employee,
+            SchedulerInputSnapshot snapshot,
+            List<Shift> generatedShifts
+    ) {
+        return generatedShifts.stream()
+                .filter(shift -> shift.getEmployee() == null || !shift.getEmployee().getId().equals(employee.getId()))
+                .filter(shift -> shift.getEmployee() == null || !shift.getEmployee().isProtectedEmployee())
+                .filter(shift -> isAssignedToJobCode(employee, shift, snapshot.employeeJobCodes()))
+                .filter(shift -> isAvailable(employee, shift, snapshot.availability()))
+                .filter(shift -> isNotOnApprovedTimeOff(employee, shift, snapshot.approvedTimeOff()))
+                .filter(shift -> hasNoOverlap(employee, shift, snapshot.existingShifts(), generatedShifts))
+                .min(Comparator
+                        .comparingLong((Shift shift) -> candidateScoreFor(employee, shift, snapshot, generatedShifts))
+                        .thenComparing(Shift::getShiftDate)
+                        .thenComparing(Shift::getStartTime)
+                        .thenComparing(Shift::getId, Comparator.nullsLast(Long::compareTo)));
+    }
+
+    private boolean isAssignedToJobCode(
+            User employee,
+            Shift shift,
+            List<EmployeeJobCode> employeeJobCodes
+    ) {
+        return employeeJobCodes.stream()
+                .anyMatch(assignment -> assignment.getEmployee().getId().equals(employee.getId())
+                        && assignment.getJobCode().getId().equals(shift.getJobCode().getId()));
     }
 
     private long higherSkillLowerRolePenalty(

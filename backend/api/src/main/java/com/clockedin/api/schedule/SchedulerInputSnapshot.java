@@ -18,6 +18,7 @@ public record SchedulerInputSnapshot(
         List<TimeOffRequest> approvedTimeOff,
         List<ForecastResponse> forecasts,
         List<ShiftTemplate> shiftTemplates,
+        List<PreferredShiftAssignment> preferredShiftAssignments,
         List<Shift> existingShifts,
         List<Shift> historicalShifts
 ) {
@@ -39,6 +40,7 @@ public record SchedulerInputSnapshot(
                 approvedTimeOff,
                 forecasts,
                 shiftTemplates,
+                Collections.emptyList(),
                 existingShifts,
                 Collections.emptyList()
         );

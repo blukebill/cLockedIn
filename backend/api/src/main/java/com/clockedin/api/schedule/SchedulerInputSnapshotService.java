@@ -28,6 +28,7 @@ public class SchedulerInputSnapshotService {
     private final TimeOffRequestRepository timeOffRequestRepository;
     private final ForecastService forecastService;
     private final ShiftTemplateRepository shiftTemplateRepository;
+    private final PreferredShiftAssignmentRepository preferredShiftAssignmentRepository;
     private final ShiftRepository shiftRepository;
 
     @Transactional(readOnly = true)
@@ -49,6 +50,9 @@ public class SchedulerInputSnapshotService {
                 ),
                 forecastService.getWeekForecast(restaurantId, startDate),
                 loadActiveTemplates(restaurantId),
+                preferredShiftAssignmentRepository.findByRestaurantIdOrderByShiftTemplateDayOfWeekAscShiftTemplateStartTimeAscEmployeeNameAsc(
+                        restaurantId
+                ),
                 shiftRepository.findByRestaurantIdAndShiftDateBetweenOrderByShiftDateAscStartTimeAsc(
                         restaurantId,
                         startDate,

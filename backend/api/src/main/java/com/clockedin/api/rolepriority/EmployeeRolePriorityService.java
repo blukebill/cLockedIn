@@ -42,13 +42,7 @@ public class EmployeeRolePriorityService {
         JobCode jobCode = jobCodeRepository.findByIdAndRestaurantId(request.getJobCodeId(), restaurantId)
                 .orElseThrow(() -> new EntityNotFoundException("Job code not found"));
 
-        EmployeeRolePriority priority = employeeRolePriorityRepository
-                .findByRestaurantIdAndEmployeeIdAndJobCodeId(
-                        restaurantId,
-                        employee.getId(),
-                        jobCode.getId()
-                )
-                .orElseGet(EmployeeRolePriority::new);
+        EmployeeRolePriority priority = findTargetPriority(restaurantId, request, employee, jobCode);
 
         priority.setRestaurant(employee.getRestaurant());
         priority.setEmployee(employee);
@@ -56,6 +50,50 @@ public class EmployeeRolePriorityService {
         priority.setPriority(request.getPriority());
 
         return toResponse(employeeRolePriorityRepository.save(priority));
+    }
+
+    private EmployeeRolePriority findTargetPriority(
+            Long restaurantId,
+            UpsertEmployeeRolePriorityRequest request,
+            User employee,
+            JobCode jobCode
+    ) {
+        if (request.getId() != null) {
+            EmployeeRolePriority existingPriority = employeeRolePriorityRepository
+                    .findByIdAndRestaurantId(request.getId(), restaurantId)
+                    .orElseThrow(() -> new EntityNotFoundException("Role priority not found"));
+            assertNoDuplicatePriority(restaurantId, employee, jobCode, existingPriority.getId());
+            return existingPriority;
+        }
+
+        return employeeRolePriorityRepository
+                .findByRestaurantIdAndEmployeeIdAndJobCodeId(
+                        restaurantId,
+                        employee.getId(),
+                        jobCode.getId()
+                )
+                .orElseGet(EmployeeRolePriority::new);
+    }
+
+    private void assertNoDuplicatePriority(
+            Long restaurantId,
+            User employee,
+            JobCode jobCode,
+            Long currentPriorityId
+    ) {
+        employeeRolePriorityRepository
+                .findByRestaurantIdAndEmployeeIdAndJobCodeId(restaurantId, employee.getId(), jobCode.getId())
+                .filter(priority -> !priority.getId().equals(currentPriorityId))
+                .ifPresent(priority -> {
+                    throw new IllegalArgumentException("Role priority already exists for this employee and job code");
+                });
+    }
+
+    public void deletePriority(Long restaurantId, Long priorityId) {
+        EmployeeRolePriority priority = employeeRolePriorityRepository.findByIdAndRestaurantId(priorityId, restaurantId)
+                .orElseThrow(() -> new EntityNotFoundException("Role priority not found"));
+
+        employeeRolePriorityRepository.delete(priority);
     }
 
     private User getEmployeeForRestaurant(Long employeeId, Long restaurantId) {

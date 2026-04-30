@@ -5,6 +5,7 @@ import {
   employeeRolePrioritiesApi,
   employeesApi,
   jobCodesApi,
+  preferredShiftAssignmentsApi,
   shiftTemplatesApi,
 } from '../services/api'
 
@@ -27,10 +28,24 @@ const emptyAssignmentForm = {
 }
 
 const emptyPriorityForm = {
+  id: null,
   employeeId: '',
   jobCodeId: '',
   priority: '0',
 }
+
+const emptyPreferredShiftForm = {
+  employeeId: '',
+  shiftTemplateId: '',
+}
+
+const priorityGuide = [
+  { value: '0', label: 'Strongest preference', detail: 'Use when this employee should get this role whenever availability allows.' },
+  { value: '250', label: 'Preferred', detail: 'Use when this employee should usually be chosen for this role.' },
+  { value: '500', label: 'Good fit', detail: 'Use for a normal positive preference.' },
+  { value: '1000', label: 'Default', detail: 'Same as having no priority set.' },
+  { value: '1500+', label: 'Last choice', detail: 'Use when this employee should be scheduled after other eligible employees.' },
+]
 
 const emptyTemplateForm = {
   jobCodeId: '',
@@ -72,6 +87,10 @@ function formatTime(value) {
   return `${hours}:${String(minutes).padStart(2, '0')} ${period}`
 }
 
+function asArray(value) {
+  return Array.isArray(value) ? value : []
+}
+
 function buildAvailabilityRows(entries = []) {
   const byDay = new Map(entries.map(entry => [entry.dayOfWeek, entry]))
 
@@ -84,6 +103,10 @@ function buildAvailabilityRows(entries = []) {
       endTime: entry?.endTime?.slice(0, 5) ?? '17:00',
     }
   })
+}
+
+function formatTemplateLabel(template) {
+  return `${formatDay(template.dayOfWeek)} - ${template.name} (${template.jobCodeName}, ${formatTime(template.startTime)}-${formatTime(template.endTime)})`
 }
 
 function SectionShell({ title, actionTitle, children, action }) {
@@ -141,6 +164,17 @@ function PrimaryButton({ children, ...props }) {
   )
 }
 
+function SecondaryButton({ children, ...props }) {
+  return (
+    <button
+      {...props}
+      className="px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-70 text-gray-700 dark:text-gray-100 font-semibold text-sm transition-colors"
+    >
+      {children}
+    </button>
+  )
+}
+
 function DangerButton({ children, ...props }) {
   return (
     <button
@@ -158,14 +192,17 @@ function TeamPage({ role }) {
   const [jobCodes, setJobCodes] = useState([])
   const [assignments, setAssignments] = useState([])
   const [rolePriorities, setRolePriorities] = useState([])
+  const [preferredShiftAssignments, setPreferredShiftAssignments] = useState([])
   const [shiftTemplates, setShiftTemplates] = useState([])
   const [employeeForm, setEmployeeForm] = useState(emptyEmployeeForm)
   const [jobCodeForm, setJobCodeForm] = useState(emptyJobCodeForm)
   const [assignmentForm, setAssignmentForm] = useState(emptyAssignmentForm)
   const [priorityForm, setPriorityForm] = useState(emptyPriorityForm)
+  const [preferredShiftForm, setPreferredShiftForm] = useState(emptyPreferredShiftForm)
   const [templateForm, setTemplateForm] = useState(emptyTemplateForm)
   const [employeeToDelete, setEmployeeToDelete] = useState(null)
   const [jobCodeToDelete, setJobCodeToDelete] = useState(null)
+  const [priorityToDelete, setPriorityToDelete] = useState(null)
   const [coverageDrafts, setCoverageDrafts] = useState({})
   const [availabilityEmployeeId, setAvailabilityEmployeeId] = useState('')
   const [availabilityRows, setAvailabilityRows] = useState(buildAvailabilityRows())
@@ -183,15 +220,17 @@ function TeamPage({ role }) {
       jobCodesApi.list(),
       employeeJobCodesApi.list(),
       employeeRolePrioritiesApi.list(),
+      preferredShiftAssignmentsApi.list(),
       shiftTemplatesApi.list(),
     ])
-      .then(([employeeData, jobCodeData, assignmentData, priorityData, templateData]) => {
-        setEmployees(employeeData)
-        setJobCodes(jobCodeData)
-        setAssignments(assignmentData)
-        setRolePriorities(priorityData)
-        setShiftTemplates(templateData)
-        setAvailabilityEmployeeId(current => current || employeeData[0]?.id?.toString() || '')
+      .then(([employeeData, jobCodeData, assignmentData, priorityData, preferredShiftData, templateData]) => {
+        setEmployees(asArray(employeeData))
+        setJobCodes(asArray(jobCodeData))
+        setAssignments(asArray(assignmentData))
+        setRolePriorities(asArray(priorityData))
+        setPreferredShiftAssignments(asArray(preferredShiftData))
+        setShiftTemplates(asArray(templateData))
+        setAvailabilityEmployeeId(current => current || asArray(employeeData)[0]?.id?.toString() || '')
       })
       .catch(err => setError(err.message || 'Unable to load team setup.'))
       .finally(() => setIsLoading(false))
@@ -226,12 +265,56 @@ function TeamPage({ role }) {
   }, [shiftTemplates])
 
   const sortedRolePriorities = useMemo(() => {
-    return [...rolePriorities].sort((a, b) => (
-      a.employeeName.localeCompare(b.employeeName)
-      || a.jobCodeRank - b.jobCodeRank
-      || a.priority - b.priority
-    ))
-  }, [rolePriorities])
+    const employeeNameById = new Map(employees.map(employee => [employee.id, employee.name]))
+    const jobCodeById = new Map(jobCodes.map(jobCode => [jobCode.id, jobCode]))
+
+    return asArray(rolePriorities)
+      .map(priority => {
+        const jobCode = jobCodeById.get(priority.jobCodeId)
+
+        return {
+          ...priority,
+          id: priority.id ?? `${priority.employeeId}-${priority.jobCodeId}`,
+          employeeName: priority.employeeName || employeeNameById.get(priority.employeeId) || 'Unknown employee',
+          jobCodeName: priority.jobCodeName || jobCode?.name || 'Unknown job code',
+          jobCodeRank: priority.jobCodeRank ?? jobCode?.rank ?? Number.MAX_SAFE_INTEGER,
+          priority: priority.priority ?? 1000,
+        }
+      })
+      .sort((a, b) => (
+        a.employeeName.localeCompare(b.employeeName)
+        || Number(a.jobCodeRank) - Number(b.jobCodeRank)
+        || Number(a.priority) - Number(b.priority)
+      ))
+  }, [employees, jobCodes, rolePriorities])
+
+  const sortedPreferredShiftAssignments = useMemo(() => {
+    const employeeNameById = new Map(employees.map(employee => [employee.id, employee.name]))
+    const templateById = new Map(shiftTemplates.map(template => [template.id, template]))
+
+    return asArray(preferredShiftAssignments)
+      .map(assignment => {
+        const template = templateById.get(assignment.shiftTemplateId)
+
+        return {
+          ...assignment,
+          id: assignment.id ?? `${assignment.employeeId}-${assignment.shiftTemplateId}`,
+          employeeName: assignment.employeeName || employeeNameById.get(assignment.employeeId) || 'Unknown employee',
+          shiftTemplateName: assignment.shiftTemplateName || template?.name || 'Unknown shift',
+          jobCodeName: assignment.jobCodeName || template?.jobCodeName || 'Unknown job code',
+          jobCodeRank: assignment.jobCodeRank ?? template?.jobCodeRank ?? Number.MAX_SAFE_INTEGER,
+          dayOfWeek: assignment.dayOfWeek || template?.dayOfWeek || 'MONDAY',
+          startTime: assignment.startTime || template?.startTime || '00:00',
+          endTime: assignment.endTime || template?.endTime || '00:00',
+        }
+      })
+      .sort((a, b) => (
+        dayOptions.indexOf(a.dayOfWeek) - dayOptions.indexOf(b.dayOfWeek)
+        || a.startTime.localeCompare(b.startTime)
+        || Number(a.jobCodeRank) - Number(b.jobCodeRank)
+        || a.employeeName.localeCompare(b.employeeName)
+      ))
+  }, [employees, preferredShiftAssignments, shiftTemplates])
 
   const coverageRows = useMemo(() => {
     return sortedTemplates.map(template => ({
@@ -247,16 +330,18 @@ function TeamPage({ role }) {
   }
 
   const refreshJobCodeDependentState = async () => {
-    const [jobCodeData, assignmentData, priorityData, templateData] = await Promise.all([
+    const [jobCodeData, assignmentData, priorityData, preferredShiftData, templateData] = await Promise.all([
       jobCodesApi.list(),
       employeeJobCodesApi.list(),
       employeeRolePrioritiesApi.list(),
+      preferredShiftAssignmentsApi.list(),
       shiftTemplatesApi.list(),
     ])
-    setJobCodes(jobCodeData)
-    setAssignments(assignmentData)
-    setRolePriorities(priorityData)
-    setShiftTemplates(templateData)
+    setJobCodes(asArray(jobCodeData))
+    setAssignments(asArray(assignmentData))
+    setRolePriorities(asArray(priorityData))
+    setPreferredShiftAssignments(asArray(preferredShiftData))
+    setShiftTemplates(asArray(templateData))
   }
 
   const handleEmployeeSubmit = async (event) => {
@@ -291,6 +376,7 @@ function TeamPage({ role }) {
       setEmployees(current => current.filter(employee => employee.id !== employeeToDelete.id))
       setAssignments(current => current.filter(assignment => assignment.employeeId !== employeeToDelete.id))
       setRolePriorities(current => current.filter(priority => priority.employeeId !== employeeToDelete.id))
+      setPreferredShiftAssignments(current => current.filter(assignment => assignment.employeeId !== employeeToDelete.id))
       if (availabilityEmployeeId === employeeToDelete.id.toString()) {
         const nextEmployee = employees.find(employee => employee.id !== employeeToDelete.id)
         setAvailabilityEmployeeId(nextEmployee?.id?.toString() || '')
@@ -300,6 +386,25 @@ function TeamPage({ role }) {
       setEmployeeToDelete(null)
     } catch (err) {
       setError(fieldError(err, 'Unable to remove employee.'))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleToggleProtectedEmployee = async (employee) => {
+    setIsSaving(true)
+    resetMessages()
+
+    try {
+      const updated = await employeesApi.update(employee.id, {
+        protectedEmployee: !employee.protectedEmployee,
+      })
+      setEmployees(current => current.map(item => (
+        item.id === employee.id ? updated : item
+      )))
+      setSuccess(`${updated.name} is now ${updated.protectedEmployee ? 'protected' : 'standard'}.`)
+    } catch (err) {
+      setError(fieldError(err, 'Unable to update protected employee status.'))
     } finally {
       setIsSaving(false)
     }
@@ -357,6 +462,11 @@ function TeamPage({ role }) {
           ? { ...current, jobCodeId: '' }
           : current
       ))
+      setPreferredShiftForm(current => (
+        removedTemplateIds.has(Number(current.shiftTemplateId))
+          ? { ...current, shiftTemplateId: '' }
+          : current
+      ))
       setSuccess(`${jobCodeToDelete.name} was removed from the job code hierarchy.`)
       setJobCodeToDelete(null)
     } catch (err) {
@@ -411,6 +521,7 @@ function TeamPage({ role }) {
 
     try {
       const saved = await employeeRolePrioritiesApi.upsert({
+        id: priorityForm.id,
         employeeId: Number(priorityForm.employeeId),
         jobCodeId: Number(priorityForm.jobCodeId),
         priority: Number(priorityForm.priority),
@@ -426,6 +537,82 @@ function TeamPage({ role }) {
       setSuccess(`${saved.employeeName} priority for ${saved.jobCodeName} was saved.`)
     } catch (err) {
       setError(fieldError(err, 'Unable to save role priority.'))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleEditPriority = (priority) => {
+    resetMessages()
+    setPriorityForm({
+      id: priority.id,
+      employeeId: priority.employeeId?.toString() || '',
+      jobCodeId: priority.jobCodeId?.toString() || '',
+      priority: priority.priority?.toString() || '0',
+    })
+  }
+
+  const handleCancelPriorityEdit = () => {
+    setPriorityForm(emptyPriorityForm)
+  }
+
+  const handleDeletePriority = async () => {
+    if (!priorityToDelete) return
+
+    setIsSaving(true)
+    resetMessages()
+
+    try {
+      await employeeRolePrioritiesApi.remove(priorityToDelete.id)
+      setRolePriorities(current => current.filter(priority => priority.id !== priorityToDelete.id))
+      if (priorityForm.id === priorityToDelete.id) {
+        setPriorityForm(emptyPriorityForm)
+      }
+      setSuccess(`${priorityToDelete.employeeName} priority for ${priorityToDelete.jobCodeName} was removed.`)
+      setPriorityToDelete(null)
+    } catch (err) {
+      setError(fieldError(err, 'Unable to remove role priority.'))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handlePreferredShiftSubmit = async (event) => {
+    event.preventDefault()
+    setIsSaving(true)
+    resetMessages()
+
+    try {
+      const saved = await preferredShiftAssignmentsApi.upsert({
+        employeeId: Number(preferredShiftForm.employeeId),
+        shiftTemplateId: Number(preferredShiftForm.shiftTemplateId),
+      })
+      setPreferredShiftAssignments(current => [
+        ...current.filter(assignment => (
+          assignment.id !== saved.id
+          && !(assignment.employeeId === saved.employeeId && assignment.shiftTemplateId === saved.shiftTemplateId)
+        )),
+        saved,
+      ])
+      setPreferredShiftForm(emptyPreferredShiftForm)
+      setSuccess(`${saved.employeeName} was assigned preferred access to ${saved.shiftTemplateName}.`)
+    } catch (err) {
+      setError(fieldError(err, 'Unable to save preferred shift assignment.'))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleDeletePreferredShiftAssignment = async (assignment) => {
+    setIsSaving(true)
+    resetMessages()
+
+    try {
+      await preferredShiftAssignmentsApi.remove(assignment.id)
+      setPreferredShiftAssignments(current => current.filter(item => item.id !== assignment.id))
+      setSuccess(`${assignment.employeeName} was removed from ${assignment.shiftTemplateName}.`)
+    } catch (err) {
+      setError(fieldError(err, 'Unable to remove preferred shift assignment.'))
     } finally {
       setIsSaving(false)
     }
@@ -554,6 +741,12 @@ function TeamPage({ role }) {
     try {
       await shiftTemplatesApi.remove(template.id)
       setShiftTemplates(current => current.filter(item => item.id !== template.id))
+      setPreferredShiftAssignments(current => current.filter(item => item.shiftTemplateId !== template.id))
+      setPreferredShiftForm(current => (
+        current.shiftTemplateId === template.id.toString()
+          ? { ...current, shiftTemplateId: '' }
+          : current
+      ))
       setSuccess(`${template.name} was deleted.`)
     } catch (err) {
       setError(fieldError(err, 'Unable to delete shift template.'))
@@ -672,6 +865,7 @@ function TeamPage({ role }) {
                     <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Name</th>
                     <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Email</th>
                     <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Status</th>
+                    <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Protection</th>
                     <th className="p-3 text-right text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Action</th>
                   </tr>
                 </thead>
@@ -688,6 +882,19 @@ function TeamPage({ role }) {
                         }`}>
                           {employee.enabled ? 'Active' : 'Inactive'}
                         </span>
+                      </td>
+                      <td className="p-3 border-b border-gray-100 dark:border-gray-700">
+                        <button
+                          onClick={() => handleToggleProtectedEmployee(employee)}
+                          disabled={isSaving}
+                          className={`inline-block px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                            employee.protectedEmployee
+                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100'
+                          }`}
+                        >
+                          {employee.protectedEmployee ? 'Protected' : 'Standard'}
+                        </button>
                       </td>
                       <td className="p-3 text-right border-b border-gray-100 dark:border-gray-700">
                         <button
@@ -937,11 +1144,25 @@ function TeamPage({ role }) {
       )}
 
       {!isLoading && activeTab === 'priorities' && (
-        <SectionShell
-          title="Employee Role Priorities"
-          actionTitle="Set Priority"
-          action={
-            <form onSubmit={handlePrioritySubmit} className="space-y-4">
+        <div className="space-y-6">
+          <SectionShell
+            title="Employee Role Priorities"
+            actionTitle={priorityForm.id ? 'Edit Priority' : 'Set Priority'}
+            action={
+              <form onSubmit={handlePrioritySubmit} className="space-y-4">
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
+                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Priority key</p>
+                <div className="space-y-2">
+                  {priorityGuide.map(item => (
+                    <div key={item.value} className="grid grid-cols-[4rem_1fr] gap-2 text-xs">
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">{item.value}</span>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        <span className="text-gray-700 dark:text-gray-300">{item.label}</span> - {item.detail}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
               <SelectInput
                 label="Employee"
                 value={priorityForm.employeeId}
@@ -972,12 +1193,19 @@ function TeamPage({ role }) {
                 onChange={event => setPriorityForm(current => ({ ...current, priority: event.target.value }))}
                 required
               />
-              <PrimaryButton type="submit" disabled={isSaving || !employees.length || !jobCodes.length}>
-                {isSaving ? 'Saving...' : 'Save Priority'}
-              </PrimaryButton>
-            </form>
-          }
-        >
+              <div className="flex gap-2">
+                {priorityForm.id && (
+                  <SecondaryButton type="button" onClick={handleCancelPriorityEdit} disabled={isSaving}>
+                    Cancel
+                  </SecondaryButton>
+                )}
+                <PrimaryButton type="submit" disabled={isSaving || !employees.length || !jobCodes.length}>
+                  {isSaving ? 'Saving...' : priorityForm.id ? 'Update Priority' : 'Save Priority'}
+                </PrimaryButton>
+              </div>
+              </form>
+            }
+          >
           {sortedRolePriorities.length === 0 ? (
             <p className="px-5 py-8 text-sm text-gray-500 dark:text-gray-400">No role priorities have been set yet.</p>
           ) : (
@@ -988,6 +1216,7 @@ function TeamPage({ role }) {
                     <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Employee</th>
                     <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Job code</th>
                     <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Priority</th>
+                    <th className="p-3 text-right text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -996,13 +1225,95 @@ function TeamPage({ role }) {
                       <td className="p-3 text-sm text-gray-900 dark:text-gray-100 border-b border-gray-100 dark:border-gray-700">{priority.employeeName}</td>
                       <td className="p-3 text-sm text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">{priority.jobCodeName}</td>
                       <td className="p-3 text-sm text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">{priority.priority}</td>
+                      <td className="p-3 text-sm text-right border-b border-gray-100 dark:border-gray-700">
+                        <div className="flex justify-end gap-2">
+                          <SecondaryButton type="button" onClick={() => handleEditPriority(priority)} disabled={isSaving}>
+                            Edit
+                          </SecondaryButton>
+                          <DangerButton type="button" onClick={() => setPriorityToDelete(priority)} disabled={isSaving}>
+                            Delete
+                          </DangerButton>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
-        </SectionShell>
+          </SectionShell>
+
+          <SectionShell
+            title="Preferred Shift Assignments"
+            actionTitle="Assign Preferred Shift"
+            action={
+              <form onSubmit={handlePreferredShiftSubmit} className="space-y-4">
+                <SelectInput
+                  label="Employee"
+                  value={preferredShiftForm.employeeId}
+                  onChange={event => setPreferredShiftForm(current => ({ ...current, employeeId: event.target.value }))}
+                  required
+                >
+                  <option value="">Select employee</option>
+                  {sortedEmployees.map(employee => (
+                    <option key={employee.id} value={employee.id}>{employee.name}</option>
+                  ))}
+                </SelectInput>
+                <SelectInput
+                  label="Shift"
+                  value={preferredShiftForm.shiftTemplateId}
+                  onChange={event => setPreferredShiftForm(current => ({ ...current, shiftTemplateId: event.target.value }))}
+                  required
+                >
+                  <option value="">Select shift</option>
+                  {sortedTemplates.map(template => (
+                    <option key={template.id} value={template.id}>{formatTemplateLabel(template)}</option>
+                  ))}
+                </SelectInput>
+                <PrimaryButton type="submit" disabled={isSaving || !employees.length || !shiftTemplates.length}>
+                  {isSaving ? 'Saving...' : 'Save Preferred Shift'}
+                </PrimaryButton>
+              </form>
+            }
+          >
+            {sortedPreferredShiftAssignments.length === 0 ? (
+              <p className="px-5 py-8 text-sm text-gray-500 dark:text-gray-400">No preferred shift assignments have been set yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Employee</th>
+                      <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Shift</th>
+                      <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Job code</th>
+                      <th className="p-3 text-right text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedPreferredShiftAssignments.map(assignment => (
+                      <tr key={assignment.id}>
+                        <td className="p-3 text-sm text-gray-900 dark:text-gray-100 border-b border-gray-100 dark:border-gray-700">{assignment.employeeName}</td>
+                        <td className="p-3 text-sm text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                          {formatDay(assignment.dayOfWeek)} - {assignment.shiftTemplateName} ({formatTime(assignment.startTime)}-{formatTime(assignment.endTime)})
+                        </td>
+                        <td className="p-3 text-sm text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">{assignment.jobCodeName}</td>
+                        <td className="p-3 text-right border-b border-gray-100 dark:border-gray-700">
+                          <button
+                            onClick={() => handleDeletePreferredShiftAssignment(assignment)}
+                            disabled={isSaving}
+                            className="text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionShell>
+        </div>
       )}
 
       {!isLoading && activeTab === 'templates' && (
@@ -1229,6 +1540,29 @@ function TeamPage({ role }) {
               </button>
               <DangerButton onClick={handleDeleteJobCode} disabled={isSaving}>
                 {isSaving ? 'Removing...' : 'Remove Job Code'}
+              </DangerButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {priorityToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Remove role priority?</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              This will remove the {priorityToDelete.jobCodeName} priority for {priorityToDelete.employeeName}. They will use the default priority for that role.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setPriorityToDelete(null)}
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <DangerButton onClick={handleDeletePriority} disabled={isSaving}>
+                {isSaving ? 'Removing...' : 'Remove Priority'}
               </DangerButton>
             </div>
           </div>

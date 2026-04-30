@@ -119,6 +119,7 @@ class ScheduleGenerationServiceTest {
                 List.of(forecast(monday, server, 1)),
                 List.of(dinner),
                 List.of(),
+                List.of(),
                 List.of(
                         historicalShift(restaurant, schedule, dinner, alex, monday.minusWeeks(2)),
                         historicalShift(restaurant, schedule, dinner, alex, monday.minusWeeks(1))
@@ -261,6 +262,228 @@ class ScheduleGenerationServiceTest {
                 .filteredOn(shift -> shift.jobCodeName().equals("CKTL"))
                 .extracting("employeeName")
                 .containsExactly("Morgan");
+    }
+
+    @Test
+    void generateWeekRotatesPreferredShiftAssignmentsAcrossMatchingShiftPatterns() {
+        LocalDate monday = LocalDate.of(2026, 4, 20);
+        Restaurant restaurant = restaurant(1L);
+        JobCode server = jobCode(10L, restaurant, "SERVER", 1);
+        User alex = employee(5L, restaurant, "Alex");
+        User blair = employee(6L, restaurant, "Blair");
+        User casey = employee(7L, restaurant, "Casey");
+        User jordan = employee(8L, restaurant, "Jordan");
+        ShiftTemplate mondayOpen = template(20L, restaurant, server, DayOfWeek.MONDAY);
+        ShiftTemplate tuesdayOpen = template(21L, restaurant, server, DayOfWeek.TUESDAY);
+        ShiftTemplate wednesdayOpen = template(22L, restaurant, server, DayOfWeek.WEDNESDAY);
+        List.of(mondayOpen, tuesdayOpen, wednesdayOpen).forEach(template -> {
+            template.setName("Opening Server");
+            template.setStartTime(LocalTime.of(10, 0));
+            template.setEndTime(LocalTime.of(16, 0));
+        });
+        Schedule schedule = schedule(30L, restaurant, monday);
+        AtomicReference<List<Shift>> savedShifts = new AtomicReference<>(List.of());
+
+        when(restaurantRepository.findById(1L)).thenReturn(Optional.of(restaurant));
+        when(scheduleRepository.findByRestaurantIdAndStartDateAndEndDate(1L, monday, monday.plusDays(6)))
+                .thenReturn(Optional.empty());
+        when(scheduleRepository.save(any(Schedule.class))).thenReturn(schedule);
+        when(snapshotService.loadWeek(1L, monday)).thenReturn(snapshotWithPreferred(
+                List.of(
+                        employeeJobCode(restaurant, alex, server),
+                        employeeJobCode(restaurant, blair, server),
+                        employeeJobCode(restaurant, casey, server),
+                        employeeJobCode(restaurant, jordan, server)
+                ),
+                List.of(priority(restaurant, jordan, server, 0)),
+                List.of(
+                        availability(alex, DayOfWeek.MONDAY),
+                        availability(alex, DayOfWeek.TUESDAY),
+                        availability(alex, DayOfWeek.WEDNESDAY),
+                        availability(blair, DayOfWeek.MONDAY),
+                        availability(blair, DayOfWeek.TUESDAY),
+                        availability(blair, DayOfWeek.WEDNESDAY),
+                        availability(casey, DayOfWeek.MONDAY),
+                        availability(casey, DayOfWeek.TUESDAY),
+                        availability(casey, DayOfWeek.WEDNESDAY),
+                        availability(jordan, DayOfWeek.MONDAY),
+                        availability(jordan, DayOfWeek.TUESDAY),
+                        availability(jordan, DayOfWeek.WEDNESDAY)
+                ),
+                List.of(),
+                List.of(
+                        forecast(monday, server, 1),
+                        forecast(monday.plusDays(1), server, 1),
+                        forecast(monday.plusDays(2), server, 1)
+                ),
+                List.of(mondayOpen, tuesdayOpen, wednesdayOpen),
+                List.of(
+                        preferredShiftAssignment(restaurant, alex, mondayOpen),
+                        preferredShiftAssignment(restaurant, blair, mondayOpen),
+                        preferredShiftAssignment(restaurant, casey, mondayOpen)
+                ),
+                List.of()
+        ));
+        when(shiftRepository.saveAll(any())).thenAnswer(invocation -> {
+            List<Shift> shifts = new ArrayList<>();
+            for (Shift shift : invocation.<Iterable<Shift>>getArgument(0)) {
+                shift.setId((long) shifts.size() + 1);
+                shifts.add(shift);
+            }
+            savedShifts.set(shifts);
+            return shifts;
+        });
+        when(shiftRepository.findByScheduleIdOrderByShiftDateAscStartTimeAscIdAsc(30L))
+                .thenAnswer(invocation -> savedShifts.get());
+
+        ScheduleResponse response = scheduleGenerationService.generateWeek(1L, monday);
+
+        assertThat(response.shifts()).hasSize(3);
+        assertThat(response.shifts()).extracting("employeeName").containsExactly("Alex", "Blair", "Casey");
+    }
+
+    @Test
+    void generateWeekPrioritizesProtectedEmployeesUntilFiveWeeklyShifts() {
+        LocalDate monday = LocalDate.of(2026, 4, 20);
+        Restaurant restaurant = restaurant(1L);
+        JobCode server = jobCode(10L, restaurant, "SERVER", 1);
+        User alex = employee(5L, restaurant, "Alex");
+        alex.setProtectedEmployee(true);
+        User blair = employee(6L, restaurant, "Blair");
+        List<ShiftTemplate> templates = List.of(
+                template(20L, restaurant, server, DayOfWeek.MONDAY),
+                template(21L, restaurant, server, DayOfWeek.TUESDAY),
+                template(22L, restaurant, server, DayOfWeek.WEDNESDAY),
+                template(23L, restaurant, server, DayOfWeek.THURSDAY),
+                template(24L, restaurant, server, DayOfWeek.FRIDAY),
+                template(25L, restaurant, server, DayOfWeek.SATURDAY)
+        );
+        templates.forEach(template -> template.setName("Dinner Server"));
+        Schedule schedule = schedule(30L, restaurant, monday);
+        AtomicReference<List<Shift>> savedShifts = new AtomicReference<>(List.of());
+
+        when(restaurantRepository.findById(1L)).thenReturn(Optional.of(restaurant));
+        when(scheduleRepository.findByRestaurantIdAndStartDateAndEndDate(1L, monday, monday.plusDays(6)))
+                .thenReturn(Optional.empty());
+        when(scheduleRepository.save(any(Schedule.class))).thenReturn(schedule);
+        when(snapshotService.loadWeek(1L, monday)).thenReturn(snapshot(
+                List.of(employeeJobCode(restaurant, alex, server), employeeJobCode(restaurant, blair, server)),
+                List.of(priority(restaurant, blair, server, 0)),
+                List.of(
+                        availability(alex, DayOfWeek.MONDAY),
+                        availability(alex, DayOfWeek.TUESDAY),
+                        availability(alex, DayOfWeek.WEDNESDAY),
+                        availability(alex, DayOfWeek.THURSDAY),
+                        availability(alex, DayOfWeek.FRIDAY),
+                        availability(alex, DayOfWeek.SATURDAY),
+                        availability(blair, DayOfWeek.MONDAY),
+                        availability(blair, DayOfWeek.TUESDAY),
+                        availability(blair, DayOfWeek.WEDNESDAY),
+                        availability(blair, DayOfWeek.THURSDAY),
+                        availability(blair, DayOfWeek.FRIDAY),
+                        availability(blair, DayOfWeek.SATURDAY)
+                ),
+                List.of(),
+                List.of(
+                        forecast(monday, server, 1),
+                        forecast(monday.plusDays(1), server, 1),
+                        forecast(monday.plusDays(2), server, 1),
+                        forecast(monday.plusDays(3), server, 1),
+                        forecast(monday.plusDays(4), server, 1),
+                        forecast(monday.plusDays(5), server, 1)
+                ),
+                templates,
+                List.of()
+        ));
+        when(shiftRepository.saveAll(any())).thenAnswer(invocation -> {
+            List<Shift> shifts = new ArrayList<>();
+            for (Shift shift : invocation.<Iterable<Shift>>getArgument(0)) {
+                shift.setId((long) shifts.size() + 1);
+                shifts.add(shift);
+            }
+            savedShifts.set(shifts);
+            return shifts;
+        });
+        when(shiftRepository.findByScheduleIdOrderByShiftDateAscStartTimeAscIdAsc(30L))
+                .thenAnswer(invocation -> savedShifts.get());
+
+        ScheduleResponse response = scheduleGenerationService.generateWeek(1L, monday);
+
+        assertThat(response.shifts()).hasSize(6);
+        assertThat(response.shifts()).extracting("employeeName")
+                .containsExactly("Alex", "Alex", "Alex", "Alex", "Alex", "Blair");
+    }
+
+    @Test
+    void generateWeekDoesNotLetProtectedStatusOverrideBetterRoleFit() {
+        LocalDate monday = LocalDate.of(2026, 4, 20);
+        Restaurant restaurant = restaurant(1L);
+        JobCode server = jobCode(10L, restaurant, "SERVER", 3);
+        JobCode bar = jobCode(11L, restaurant, "BAR", 5);
+        User jordan = employee(5L, restaurant, "Jordan");
+        jordan.setProtectedEmployee(true);
+        User casey = employee(6L, restaurant, "Casey");
+        List<ShiftTemplate> templates = new ArrayList<>();
+        List<ForecastResponse> forecasts = new ArrayList<>();
+        List<Availability> availability = new ArrayList<>();
+
+        for (int i = 0; i < 5; i++) {
+            LocalDate date = monday.plusDays(i);
+            DayOfWeek day = date.getDayOfWeek();
+            ShiftTemplate serverShift = template(20L + i, restaurant, server, day);
+            serverShift.setName("Opening Dining Server");
+            serverShift.setStartTime(LocalTime.of(10, 0));
+            serverShift.setEndTime(LocalTime.of(16, 0));
+            ShiftTemplate barShift = template(30L + i, restaurant, bar, day);
+            barShift.setName("Opening Bar");
+            barShift.setStartTime(LocalTime.of(10, 0));
+            barShift.setEndTime(LocalTime.of(16, 0));
+            templates.add(serverShift);
+            templates.add(barShift);
+            forecasts.add(forecastWithoutRequirements(date));
+            availability.add(availability(jordan, day));
+            availability.add(availability(casey, day));
+        }
+
+        Schedule schedule = schedule(30L, restaurant, monday);
+        AtomicReference<List<Shift>> savedShifts = new AtomicReference<>(List.of());
+
+        when(restaurantRepository.findById(1L)).thenReturn(Optional.of(restaurant));
+        when(scheduleRepository.findByRestaurantIdAndStartDateAndEndDate(1L, monday, monday.plusDays(6)))
+                .thenReturn(Optional.empty());
+        when(scheduleRepository.save(any(Schedule.class))).thenReturn(schedule);
+        when(snapshotService.loadWeek(1L, monday)).thenReturn(snapshot(
+                List.of(
+                        employeeJobCode(restaurant, jordan, server),
+                        employeeJobCode(restaurant, jordan, bar),
+                        employeeJobCode(restaurant, casey, server)
+                ),
+                List.of(priority(restaurant, jordan, bar, 0)),
+                availability,
+                List.of(),
+                forecasts,
+                templates,
+                List.of()
+        ));
+        when(shiftRepository.saveAll(any())).thenAnswer(invocation -> {
+            List<Shift> shifts = new ArrayList<>();
+            for (Shift shift : invocation.<Iterable<Shift>>getArgument(0)) {
+                shift.setId((long) shifts.size() + 1);
+                shifts.add(shift);
+            }
+            savedShifts.set(shifts);
+            return shifts;
+        });
+        when(shiftRepository.findByScheduleIdOrderByShiftDateAscStartTimeAscIdAsc(30L))
+                .thenAnswer(invocation -> savedShifts.get());
+
+        ScheduleResponse response = scheduleGenerationService.generateWeek(1L, monday);
+
+        assertThat(response.shifts()).hasSize(10);
+        assertThat(response.shifts())
+                .filteredOn(shift -> "Jordan".equals(shift.employeeName()))
+                .extracting("jobCodeName")
+                .containsOnly("BAR");
     }
 
     @Test
@@ -438,7 +661,47 @@ class ScheduleGenerationServiceTest {
             List<ShiftTemplate> templates,
             List<Shift> shifts
     ) {
-        return new SchedulerInputSnapshot(List.of(), employeeJobCodes, priorities, availability, timeOff, forecasts, templates, shifts);
+        return new SchedulerInputSnapshot(
+                employeesFrom(employeeJobCodes),
+                employeeJobCodes,
+                priorities,
+                availability,
+                timeOff,
+                forecasts,
+                templates,
+                shifts
+        );
+    }
+
+    private SchedulerInputSnapshot snapshotWithPreferred(
+            List<EmployeeJobCode> employeeJobCodes,
+            List<EmployeeRolePriority> priorities,
+            List<Availability> availability,
+            List<TimeOffRequest> timeOff,
+            List<ForecastResponse> forecasts,
+            List<ShiftTemplate> templates,
+            List<PreferredShiftAssignment> preferredShiftAssignments,
+            List<Shift> shifts
+    ) {
+        return new SchedulerInputSnapshot(
+                employeesFrom(employeeJobCodes),
+                employeeJobCodes,
+                priorities,
+                availability,
+                timeOff,
+                forecasts,
+                templates,
+                preferredShiftAssignments,
+                shifts,
+                List.of()
+        );
+    }
+
+    private List<User> employeesFrom(List<EmployeeJobCode> employeeJobCodes) {
+        return employeeJobCodes.stream()
+                .map(EmployeeJobCode::getEmployee)
+                .distinct()
+                .toList();
     }
 
     private ForecastResponse forecast(LocalDate date, JobCode jobCode, int requiredCount) {
@@ -574,6 +837,18 @@ class ScheduleGenerationServiceTest {
         priority.setJobCode(jobCode);
         priority.setPriority(value);
         return priority;
+    }
+
+    private PreferredShiftAssignment preferredShiftAssignment(
+            Restaurant restaurant,
+            User employee,
+            ShiftTemplate template
+    ) {
+        PreferredShiftAssignment assignment = new PreferredShiftAssignment();
+        assignment.setRestaurant(restaurant);
+        assignment.setEmployee(employee);
+        assignment.setShiftTemplate(template);
+        return assignment;
     }
 
     private Shift historicalShift(

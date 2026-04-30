@@ -81,6 +81,10 @@ public class EmployeeService {
             employee.setPasswordHash(passwordEncoder.encode(request.password()));
         }
 
+        if (request.protectedEmployee() != null) {
+            employee.setProtectedEmployee(request.protectedEmployee());
+        }
+
         User saved = userRepository.save(employee);
         return toResponse(saved);
     }
@@ -103,7 +107,8 @@ public class EmployeeService {
                 user.getEmail(),
                 user.getRole().name(),
                 user.getRestaurant().getId(),
-        	user.isEnabled()
+        	user.isEnabled(),
+                user.isProtectedEmployee()
 	);
     }
 }

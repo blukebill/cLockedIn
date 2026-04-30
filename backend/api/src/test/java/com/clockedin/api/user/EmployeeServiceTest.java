@@ -103,12 +103,13 @@ class EmployeeServiceTest {
 
         EmployeeResponse response = employeeService.updateEmployee(
                 10L,
-                new UpdateEmployeeRequest("New Name", "new@example.com", "newPassword123"),
+                new UpdateEmployeeRequest("New Name", "new@example.com", "newPassword123", true),
                 1L
         );
 
         assertThat(response.name()).isEqualTo("New Name");
         assertThat(response.email()).isEqualTo("new@example.com");
+        assertThat(response.protectedEmployee()).isTrue();
         assertThat(employee.getPasswordHash()).isEqualTo("new-hash");
     }
 
@@ -119,7 +120,7 @@ class EmployeeServiceTest {
 
         assertThatThrownBy(() -> employeeService.updateEmployee(
                 11L,
-                new UpdateEmployeeRequest("Name", null, null),
+                new UpdateEmployeeRequest("Name", null, null, null),
                 1L
         )).isInstanceOf(EntityNotFoundException.class);
     }

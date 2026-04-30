@@ -43,4 +43,13 @@ public class EmployeeRolePriorityController {
     ) {
         return employeeRolePriorityService.upsertPriority(userDetails.getRestaurantId(), request);
     }
+
+    @PreAuthorize("hasRole('MANAGER')")
+    @DeleteMapping("/{priorityId}")
+    public void deletePriority(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long priorityId
+    ) {
+        employeeRolePriorityService.deletePriority(userDetails.getRestaurantId(), priorityId);
+    }
 }

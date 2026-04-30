@@ -12,5 +12,7 @@ public record UpdateEmployeeRequest(
         String email,
 
         @Size(min = 8, max = 100)
-        String password
+        String password,
+
+        Boolean protectedEmployee
 ) {}

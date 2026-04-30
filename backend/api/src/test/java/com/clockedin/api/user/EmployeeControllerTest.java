@@ -56,7 +56,7 @@ class EmployeeControllerTest {
     void managerCanCreateEmployee() throws Exception {
         CreateEmployeeRequest request = new CreateEmployeeRequest("New Employee", "new@example.com", "password123");
         when(employeeService.createEmployee(request, 1L))
-                .thenReturn(new EmployeeResponse(10L, "New Employee", "new@example.com", "EMPLOYEE", 1L, true));
+                .thenReturn(new EmployeeResponse(10L, "New Employee", "new@example.com", "EMPLOYEE", 1L, true, false));
 
         mockMvc.perform(post("/employees")
                         .with(user(userDetails(Role.MANAGER)))

@@ -11,6 +11,8 @@ import lombok.Setter;
 @NoArgsConstructor
 public class UpsertEmployeeRolePriorityRequest {
 
+    private Long id;
+
     @NotNull
     private Long employeeId;
 

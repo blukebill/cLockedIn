@@ -6,5 +6,6 @@ public record EmployeeResponse(
         String email,
         String role,
         Long restaurantId,
-        boolean enabled
+        boolean enabled,
+        boolean protectedEmployee
 ) {}

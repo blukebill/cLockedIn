@@ -79,6 +79,49 @@ class EmployeeRolePriorityServiceTest {
     }
 
     @Test
+    void updatingPriorityByIdCanChangeEmployeeAndJobCode() {
+        Restaurant restaurant = restaurant(1L);
+        User employee = user(5L, restaurant);
+        User nextEmployee = user(6L, restaurant);
+        JobCode jobCode = jobCode(10L, restaurant);
+        EmployeeRolePriority existing = priority(20L, employee, jobCode, 1);
+        UpsertEmployeeRolePriorityRequest request = request(6L, 10L, 2);
+        request.setId(20L);
+        when(userRepository.findByIdAndRestaurantId(6L, 1L)).thenReturn(Optional.of(nextEmployee));
+        when(jobCodeRepository.findByIdAndRestaurantId(10L, 1L)).thenReturn(Optional.of(jobCode));
+        when(employeeRolePriorityRepository.findByIdAndRestaurantId(20L, 1L)).thenReturn(Optional.of(existing));
+        when(employeeRolePriorityRepository.findByRestaurantIdAndEmployeeIdAndJobCodeId(1L, 6L, 10L))
+                .thenReturn(Optional.empty());
+        when(employeeRolePriorityRepository.save(existing)).thenReturn(existing);
+
+        EmployeeRolePriorityResponse response = service.upsertPriority(1L, request);
+
+        assertThat(response.id()).isEqualTo(20L);
+        assertThat(response.employeeId()).isEqualTo(6L);
+        assertThat(response.priority()).isEqualTo(2);
+    }
+
+    @Test
+    void updatingPriorityByIdRejectsDuplicateEmployeeAndJobCode() {
+        Restaurant restaurant = restaurant(1L);
+        User employee = user(5L, restaurant);
+        JobCode jobCode = jobCode(10L, restaurant);
+        EmployeeRolePriority existing = priority(20L, employee, jobCode, 1);
+        EmployeeRolePriority duplicate = priority(21L, employee, jobCode, 4);
+        UpsertEmployeeRolePriorityRequest request = request(5L, 10L, 2);
+        request.setId(20L);
+        when(userRepository.findByIdAndRestaurantId(5L, 1L)).thenReturn(Optional.of(employee));
+        when(jobCodeRepository.findByIdAndRestaurantId(10L, 1L)).thenReturn(Optional.of(jobCode));
+        when(employeeRolePriorityRepository.findByIdAndRestaurantId(20L, 1L)).thenReturn(Optional.of(existing));
+        when(employeeRolePriorityRepository.findByRestaurantIdAndEmployeeIdAndJobCodeId(1L, 5L, 10L))
+                .thenReturn(Optional.of(duplicate));
+
+        assertThatThrownBy(() -> service.upsertPriority(1L, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("already exists");
+    }
+
+    @Test
     void crossRestaurantEmployeeIsRejected() {
         when(userRepository.findByIdAndRestaurantId(5L, 1L)).thenReturn(Optional.empty());
 
@@ -115,6 +158,28 @@ class EmployeeRolePriorityServiceTest {
 
         verify(employeeRolePriorityRepository).findByRestaurantIdOrderByEmployeeIdAscJobCodeRankAsc(1L);
         verify(employeeRolePriorityRepository).findByRestaurantIdAndEmployeeIdOrderByJobCodeRankAsc(1L, 5L);
+    }
+
+    @Test
+    void deletePriorityUsesRestaurantScope() {
+        Restaurant restaurant = restaurant(1L);
+        User employee = user(5L, restaurant);
+        JobCode jobCode = jobCode(10L, restaurant);
+        EmployeeRolePriority existing = priority(20L, employee, jobCode, 3);
+        when(employeeRolePriorityRepository.findByIdAndRestaurantId(20L, 1L)).thenReturn(Optional.of(existing));
+
+        service.deletePriority(1L, 20L);
+
+        verify(employeeRolePriorityRepository).delete(existing);
+    }
+
+    @Test
+    void deletePriorityRejectsMissingRestaurantScopedPriority() {
+        when(employeeRolePriorityRepository.findByIdAndRestaurantId(20L, 1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.deletePriority(1L, 20L))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("Role priority not found");
     }
 
     private UpsertEmployeeRolePriorityRequest request(Long employeeId, Long jobCodeId, int priority) {

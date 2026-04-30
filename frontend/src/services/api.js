@@ -190,6 +190,31 @@ export const employeeRolePrioritiesApi = {
       body: priority,
     })
   },
+
+  remove(priorityId) {
+    return apiRequest(`/employee-role-priorities/${priorityId}`, {
+      method: 'DELETE',
+    })
+  },
+}
+
+export const preferredShiftAssignmentsApi = {
+  list() {
+    return apiRequest('/preferred-shift-assignments')
+  },
+
+  upsert(assignment) {
+    return apiRequest('/preferred-shift-assignments', {
+      method: 'PUT',
+      body: assignment,
+    })
+  },
+
+  remove(assignmentId) {
+    return apiRequest(`/preferred-shift-assignments/${assignmentId}`, {
+      method: 'DELETE',
+    })
+  },
 }
 
 export const shiftTemplatesApi = {
