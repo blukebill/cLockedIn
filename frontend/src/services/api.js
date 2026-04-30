@@ -111,6 +111,30 @@ export const schedulesApi = {
   },
 }
 
+export const timeOffRequestsApi = {
+  listMine() {
+    return apiRequest('/time-off-requests/my')
+  },
+
+  listRestaurant() {
+    return apiRequest('/time-off-requests')
+  },
+
+  create(request) {
+    return apiRequest('/time-off-requests', {
+      method: 'POST',
+      body: request,
+    })
+  },
+
+  updateStatus(id, status) {
+    return apiRequest(`/time-off-requests/${id}/status`, {
+      method: 'PATCH',
+      body: { status },
+    })
+  },
+}
+
 export const employeesApi = {
   list() {
     return apiRequest('/employees')

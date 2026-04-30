@@ -252,7 +252,8 @@ public class ScheduleGenerationService {
         return approvedTimeOff.stream()
                 .filter(request -> request.getUser().getId().equals(employee.getId()))
                 .noneMatch(request -> !request.getStartDate().isAfter(shift.getShiftDate())
-                        && !request.getEndDate().isBefore(shift.getShiftDate()));
+                        && !request.getEndDate().isBefore(shift.getShiftDate())
+                        && overlaps(request.getStartTime(), request.getEndTime(), shift.getStartTime(), shift.getEndTime()));
     }
 
     private boolean hasNoOverlap(

@@ -26,6 +26,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -62,6 +63,8 @@ class TimeOffRequestControllerTest {
         CreateTimeOffRequest request = new CreateTimeOffRequest(
                 LocalDate.now().plusDays(1),
                 LocalDate.now().plusDays(2),
+                LocalTime.of(9, 0),
+                LocalTime.of(16, 0),
                 "Vacation"
         );
 
@@ -74,7 +77,7 @@ class TimeOffRequestControllerTest {
 
     @Test
     void validationFailureReturnsStructuredBadRequest() throws Exception {
-        CreateTimeOffRequest request = new CreateTimeOffRequest(null, null, "Vacation");
+        CreateTimeOffRequest request = new CreateTimeOffRequest(null, null, null, null, "Vacation");
 
         mockMvc.perform(post("/time-off-requests")
                         .with(user(userDetails(Role.EMPLOYEE)))
@@ -83,7 +86,9 @@ class TimeOffRequestControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Validation failed"))
                 .andExpect(jsonPath("$.fields.startDate").exists())
-                .andExpect(jsonPath("$.fields.endDate").exists());
+                .andExpect(jsonPath("$.fields.endDate").exists())
+                .andExpect(jsonPath("$.fields.startTime").exists())
+                .andExpect(jsonPath("$.fields.endTime").exists());
     }
 
     @Test

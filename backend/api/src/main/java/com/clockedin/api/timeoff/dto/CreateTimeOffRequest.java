@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 public record CreateTimeOffRequest(
 
@@ -15,6 +16,12 @@ public record CreateTimeOffRequest(
         @NotNull
         @FutureOrPresent
         LocalDate endDate,
+
+        @NotNull
+        LocalTime startTime,
+
+        @NotNull
+        LocalTime endTime,
 
         @Size(max = 500)
         String reason

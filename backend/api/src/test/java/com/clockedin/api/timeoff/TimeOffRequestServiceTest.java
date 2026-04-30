@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,12 +56,20 @@ class TimeOffRequestServiceTest {
         TimeOffRequestResponse response = service.createRequest(
                 5L,
                 1L,
-                new CreateTimeOffRequest(LocalDate.now().plusDays(1), LocalDate.now().plusDays(2), "Vacation")
+                new CreateTimeOffRequest(
+                        LocalDate.now().plusDays(1),
+                        LocalDate.now().plusDays(2),
+                        LocalTime.of(9, 0),
+                        LocalTime.of(16, 0),
+                        "Vacation"
+                )
         );
 
         assertThat(response.status()).isEqualTo("PENDING");
         assertThat(response.userId()).isEqualTo(5L);
         assertThat(response.restaurantId()).isEqualTo(1L);
+        assertThat(response.startTime()).isEqualTo(LocalTime.of(9, 0));
+        assertThat(response.endTime()).isEqualTo(LocalTime.of(16, 0));
     }
 
     @Test
@@ -68,9 +77,31 @@ class TimeOffRequestServiceTest {
         assertThatThrownBy(() -> service.createRequest(
                 5L,
                 1L,
-                new CreateTimeOffRequest(LocalDate.now().plusDays(2), LocalDate.now().plusDays(1), "Bad")
+                new CreateTimeOffRequest(
+                        LocalDate.now().plusDays(2),
+                        LocalDate.now().plusDays(1),
+                        LocalTime.of(9, 0),
+                        LocalTime.of(16, 0),
+                        "Bad"
+                )
         )).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Start date cannot be after end date");
+    }
+
+    @Test
+    void createRequestRejectsInvalidTimeOrder() {
+        assertThatThrownBy(() -> service.createRequest(
+                5L,
+                1L,
+                new CreateTimeOffRequest(
+                        LocalDate.now().plusDays(1),
+                        LocalDate.now().plusDays(1),
+                        LocalTime.of(16, 0),
+                        LocalTime.of(9, 0),
+                        "Bad"
+                )
+        )).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Start time must be before end time");
     }
 
     @Test
@@ -132,6 +163,8 @@ class TimeOffRequestServiceTest {
         request.setRestaurant(user.getRestaurant());
         request.setStartDate(LocalDate.now().plusDays(1));
         request.setEndDate(LocalDate.now().plusDays(2));
+        request.setStartTime(LocalTime.of(9, 0));
+        request.setEndTime(LocalTime.of(17, 0));
         request.setReason("Reason");
         request.setStatus(status);
         request.setCreatedAt(LocalDateTime.now());

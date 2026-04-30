@@ -10,6 +10,7 @@ import com.clockedin.api.restaurant.RestaurantRepository;
 import com.clockedin.api.rolepriority.EmployeeRolePriority;
 import com.clockedin.api.schedule.dto.ScheduleResponse;
 import com.clockedin.api.timeoff.TimeOffRequest;
+import com.clockedin.api.timeoff.TimeOffStatus;
 import com.clockedin.api.user.Role;
 import com.clockedin.api.user.User;
 import org.junit.jupiter.api.Test;
@@ -487,6 +488,61 @@ class ScheduleGenerationServiceTest {
     }
 
     @Test
+    void generateWeekOnlyBlocksShiftsOverlappingApprovedTimeOffHours() {
+        LocalDate monday = LocalDate.of(2026, 4, 20);
+        Restaurant restaurant = restaurant(1L);
+        JobCode server = jobCode(10L, restaurant, "SERVER", 1);
+        User alex = employee(5L, restaurant, "Alex");
+        ShiftTemplate morning = template(20L, restaurant, server, DayOfWeek.MONDAY);
+        morning.setName("Morning Server");
+        morning.setStartTime(LocalTime.of(9, 0));
+        morning.setEndTime(LocalTime.of(14, 0));
+        ShiftTemplate evening = template(21L, restaurant, server, DayOfWeek.MONDAY);
+        evening.setName("Evening Server");
+        evening.setStartTime(LocalTime.of(16, 0));
+        evening.setEndTime(LocalTime.of(22, 0));
+        Schedule schedule = schedule(30L, restaurant, monday);
+        AtomicReference<List<Shift>> savedShifts = new AtomicReference<>(List.of());
+
+        when(restaurantRepository.findById(1L)).thenReturn(Optional.of(restaurant));
+        when(scheduleRepository.findByRestaurantIdAndStartDateAndEndDate(1L, monday, monday.plusDays(6)))
+                .thenReturn(Optional.empty());
+        when(scheduleRepository.save(any(Schedule.class))).thenReturn(schedule);
+        when(snapshotService.loadWeek(1L, monday)).thenReturn(snapshot(
+                List.of(employeeJobCode(restaurant, alex, server)),
+                List.of(),
+                List.of(availability(alex)),
+                List.of(approvedTimeOff(alex, monday, monday, LocalTime.MIDNIGHT, LocalTime.of(16, 0))),
+                List.of(forecastWithoutRequirements(monday)),
+                List.of(morning, evening),
+                List.of()
+        ));
+        when(shiftRepository.saveAll(any())).thenAnswer(invocation -> {
+            List<Shift> shifts = new ArrayList<>();
+            for (Shift shift : invocation.<Iterable<Shift>>getArgument(0)) {
+                shift.setId((long) shifts.size() + 1);
+                shifts.add(shift);
+            }
+            savedShifts.set(shifts);
+            return shifts;
+        });
+        when(shiftRepository.findByScheduleIdOrderByShiftDateAscStartTimeAscIdAsc(30L))
+                .thenAnswer(invocation -> savedShifts.get());
+
+        ScheduleResponse response = scheduleGenerationService.generateWeek(1L, monday);
+
+        assertThat(response.shifts()).hasSize(2);
+        assertThat(response.shifts())
+                .filteredOn(shift -> shift.shiftTemplateId().equals(20L))
+                .extracting("status")
+                .containsExactly("UNASSIGNED");
+        assertThat(response.shifts())
+                .filteredOn(shift -> shift.shiftTemplateId().equals(21L))
+                .extracting("employeeName")
+                .containsExactly("Alex");
+    }
+
+    @Test
     void generateWeekLeavesShiftUnassignedWhenNoEmployeeCanWork() {
         LocalDate monday = LocalDate.of(2026, 4, 20);
         Restaurant restaurant = restaurant(1L);
@@ -849,6 +905,24 @@ class ScheduleGenerationServiceTest {
         assignment.setEmployee(employee);
         assignment.setShiftTemplate(template);
         return assignment;
+    }
+
+    private TimeOffRequest approvedTimeOff(
+            User employee,
+            LocalDate startDate,
+            LocalDate endDate,
+            LocalTime startTime,
+            LocalTime endTime
+    ) {
+        TimeOffRequest request = new TimeOffRequest();
+        request.setUser(employee);
+        request.setRestaurant(employee.getRestaurant());
+        request.setStartDate(startDate);
+        request.setEndDate(endDate);
+        request.setStartTime(startTime);
+        request.setEndTime(endTime);
+        request.setStatus(TimeOffStatus.APPROVED);
+        return request;
     }
 
     private Shift historicalShift(

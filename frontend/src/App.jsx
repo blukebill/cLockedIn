@@ -5,6 +5,7 @@ import Navbar from './components/Navbar'
 import EmployeeDashboard from './pages/EmployeeDashboard'
 import ManagerDashboard from './pages/ManagerDashboard'
 import TeamPage from './pages/TeamPage'
+import TimeOffPage from './pages/TimeOffPage'
 import { authApi, getStoredToken } from './services/api'
 import { toAppRole } from './utils/apiScheduleAdapter'
 import './App.css'
@@ -83,6 +84,7 @@ function App() {
         {page === 'dashboard' && role === 'manager' && <ManagerDashboard setPage={setPage} user={user} scheduleVersion={scheduleVersion} />}
         {page === 'schedule' && <ScheduleGrid role={role} isGenerated={isGenerated} setIsGenerated={setIsGenerated} isPublished={isPublished} setIsPublished={setIsPublished} publishedWeek={publishedWeek} setPublishedWeek={setPublishedWeek} onScheduleChanged={() => setScheduleVersion(version => version + 1)} />}
         {page === 'team' && <TeamPage role={role} />}
+        {page === 'timeOff' && <TimeOffPage role={role} />}
         {page === 'earnings' && <h1>Earnings</h1>}
         {page === 'messages' && <h1>Messages</h1>} 
       </div>

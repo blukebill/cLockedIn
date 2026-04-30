@@ -30,6 +30,9 @@ public class TimeOffRequestService {
         if (request.startDate().isAfter(request.endDate())) {
             throw new IllegalArgumentException("Start date cannot be after end date");
         }
+        if (!request.startTime().isBefore(request.endTime())) {
+            throw new IllegalArgumentException("Start time must be before end time");
+        }
 
         User user = userRepository.findByIdAndRestaurantId(userId, restaurantId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
@@ -42,6 +45,8 @@ public class TimeOffRequestService {
         timeOffRequest.setRestaurant(restaurant);
         timeOffRequest.setStartDate(request.startDate());
         timeOffRequest.setEndDate(request.endDate());
+        timeOffRequest.setStartTime(request.startTime());
+        timeOffRequest.setEndTime(request.endTime());
         timeOffRequest.setReason(request.reason());
         timeOffRequest.setStatus(TimeOffStatus.PENDING);
         timeOffRequest.setCreatedAt(LocalDateTime.now());
@@ -92,10 +97,13 @@ public class TimeOffRequestService {
         return new TimeOffRequestResponse(
                 request.getId(),
                 request.getUser().getId(),
+                request.getUser().getName(),
                 request.getUser().getEmail(),
                 request.getRestaurant().getId(),
                 request.getStartDate(),
                 request.getEndDate(),
+                request.getStartTime(),
+                request.getEndTime(),
                 request.getReason(),
                 request.getStatus().name(),
                 request.getCreatedAt()

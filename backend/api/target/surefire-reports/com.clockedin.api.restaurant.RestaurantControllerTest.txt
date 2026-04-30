@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.clockedin.api.restaurant.RestaurantControllerTest
 -------------------------------------------------------------------------------
-Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.259 s -- in com.clockedin.api.restaurant.RestaurantControllerTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.883 s -- in com.clockedin.api.restaurant.RestaurantControllerTest

@@ -1,5 +1,12 @@
 function Navbar({ page, setPage, role, onLogout }) {
-  const navItems = ['dashboard', 'schedule', 'team', 'earnings', 'messages']
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'schedule', label: 'Schedule' },
+    { id: 'team', label: 'Team' },
+    { id: 'timeOff', label: 'Time Off' },
+    { id: 'earnings', label: 'Earnings' },
+    { id: 'messages', label: 'Messages' },
+  ]
 
   return (
     <nav className="flex items-center justify-between px-6 h-14 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 sticky top-0 z-50">
@@ -16,15 +23,15 @@ function Navbar({ page, setPage, role, onLogout }) {
       <div className="flex gap-1">
         {navItems.map(item => (
           <button
-            key={item}
-            onClick={() => setPage(item)}
-            className={`px-3 py-1.5 rounded-md text-sm capitalize transition-colors
-              ${page === item
+            key={item.id}
+            onClick={() => setPage(item.id)}
+            className={`px-3 py-1.5 rounded-md text-sm transition-colors
+              ${page === item.id
                 ? 'bg-gray-100 dark:bg-gray-800 font-semibold text-gray-900 dark:text-gray-100'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
           >
-            {item}
+            {item.label}
           </button>
         ))}
       </div>
