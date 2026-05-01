@@ -6,7 +6,8 @@ import EmployeeDashboard from './pages/EmployeeDashboard'
 import ManagerDashboard from './pages/ManagerDashboard'
 import TeamPage from './pages/TeamPage'
 import TimeOffPage from './pages/TimeOffPage'
-import { authApi, getStoredToken } from './services/api'
+import MessagesPage from './pages/MessagesPage'
+import { authApi, getStoredToken, messagesApi } from './services/api'
 import { toAppRole } from './utils/apiScheduleAdapter'
 import './App.css'
 
@@ -20,6 +21,7 @@ function App() {
   const [publishedWeek, setPublishedWeek] = useState ('')
   const [isBannerDismissed, setIsBannerDismissed] = useState(false)
   const [scheduleVersion, setScheduleVersion] = useState(0)
+  const [messageUnreadCount, setMessageUnreadCount] = useState(0)
 
   const role = toAppRole(user?.role)
 
@@ -35,6 +37,16 @@ function App() {
       .finally(() => setIsBootstrapping(false))
   }, [])
 
+  useEffect(() => {
+    if (!user) {
+      return
+    }
+
+    messagesApi.unreadCount()
+      .then(count => setMessageUnreadCount(Number(count) || 0))
+      .catch(() => setMessageUnreadCount(0))
+  }, [user])
+
   const handleLogin = (nextUser) => {
     setUser(nextUser)
     setPage('dashboard')
@@ -48,6 +60,7 @@ function App() {
     setIsPublished(false)
     setPublishedWeek('')
     setIsBannerDismissed(false)
+    setMessageUnreadCount(0)
   }
 
   if (isBootstrapping) {
@@ -64,7 +77,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      <Navbar page={page} setPage={setPage} role={role} onLogout={handleLogout} />
+      <Navbar page={page} setPage={setPage} role={role} onLogout={handleLogout} messageUnreadCount={messageUnreadCount} />
       
       {/* Notification Banner - only shows for employees after publish */}
       {isPublished && role === 'employee' && !isBannerDismissed && (
@@ -86,7 +99,7 @@ function App() {
         {page === 'team' && <TeamPage role={role} />}
         {page === 'timeOff' && <TimeOffPage role={role} />}
         {page === 'earnings' && <h1>Earnings</h1>}
-        {page === 'messages' && <h1>Messages</h1>} 
+        {page === 'messages' && <MessagesPage role={role} user={user} onUnreadCountChange={setMessageUnreadCount} />} 
       </div>
     </div>
   )

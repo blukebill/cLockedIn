@@ -78,6 +78,16 @@ export const authApi = {
   },
 }
 
+export function getMessagesWebSocketUrl() {
+  const base = new URL(API_BASE_URL, window.location.origin)
+  base.protocol = base.protocol === 'https:' ? 'wss:' : 'ws:'
+  base.pathname = '/ws/messages'
+  base.search = ''
+  const token = getStoredToken()
+  if (token) base.searchParams.set('token', token)
+  return base.toString()
+}
+
 export const schedulesApi = {
   getWeek(startDate) {
     return apiRequest(`/schedules/week?startDate=${startDate}`)
@@ -171,6 +181,44 @@ export const timeOffRequestsApi = {
     return apiRequest(`/time-off-requests/${id}/status`, {
       method: 'PATCH',
       body: { status },
+    })
+  },
+}
+
+export const messagesApi = {
+  contacts() {
+    return apiRequest('/messages/contacts')
+  },
+
+  conversations() {
+    return apiRequest('/messages/conversations')
+  },
+
+  unreadCount() {
+    return apiRequest('/messages/unread-count')
+  },
+
+  createConversation(conversation) {
+    return apiRequest('/messages/conversations', {
+      method: 'POST',
+      body: conversation,
+    })
+  },
+
+  messages(conversationId) {
+    return apiRequest(`/messages/conversations/${conversationId}/messages`)
+  },
+
+  markRead(conversationId) {
+    return apiRequest(`/messages/conversations/${conversationId}/read`, {
+      method: 'PATCH',
+    })
+  },
+
+  sendMessage(conversationId, content) {
+    return apiRequest(`/messages/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: { content },
     })
   },
 }
