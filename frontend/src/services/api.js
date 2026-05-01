@@ -141,6 +141,13 @@ export const schedulesApi = {
     })
   },
 
+  swapShifts(scheduleId, sourceShiftId, targetShiftId, overrideConflicts = false) {
+    return apiRequest(`/schedules/${scheduleId}/shifts/${sourceShiftId}/swap`, {
+      method: 'POST',
+      body: { targetShiftId, overrideConflicts },
+    })
+  },
+
   assignShift(scheduleId, shiftId, employeeId, overrideConflicts = false) {
     return apiRequest(`/schedules/${scheduleId}/shifts/${shiftId}/assign`, {
       method: 'PATCH',
@@ -219,6 +226,19 @@ export const messagesApi = {
     return apiRequest(`/messages/conversations/${conversationId}/messages`, {
       method: 'POST',
       body: { content },
+    })
+  },
+}
+
+export const announcementsApi = {
+  list() {
+    return apiRequest('/announcements')
+  },
+
+  create(announcement) {
+    return apiRequest('/announcements', {
+      method: 'POST',
+      body: announcement,
     })
   },
 }

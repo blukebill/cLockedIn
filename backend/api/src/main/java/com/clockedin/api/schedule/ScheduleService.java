@@ -22,6 +22,7 @@ import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -189,6 +190,59 @@ public class ScheduleService {
     }
 
     @Transactional
+    public ScheduleResponse swapShifts(
+            Long restaurantId,
+            Long scheduleId,
+            Long sourceShiftId,
+            Long targetShiftId,
+            boolean overrideConflicts
+    ) {
+        Schedule schedule = findEditableSchedule(restaurantId, scheduleId);
+        Shift sourceShift = findShift(restaurantId, scheduleId, sourceShiftId);
+        Shift targetShift = findShift(restaurantId, scheduleId, targetShiftId);
+        if (sourceShift.getId().equals(targetShift.getId())) {
+            throw new IllegalArgumentException("Cannot swap a shift with itself");
+        }
+
+        User sourceEmployee = sourceShift.getEmployee();
+        User targetEmployee = targetShift.getEmployee();
+        LocalDate sourceDate = sourceShift.getShiftDate();
+        LocalDate targetDate = targetShift.getShiftDate();
+
+        User nextSourceEmployee = targetEmployee == null
+                ? null
+                : findAssignableEmployee(
+                        restaurantId,
+                        targetEmployee.getId(),
+                        sourceShift.getJobCode().getId(),
+                        overrideConflicts
+                );
+        User nextTargetEmployee = sourceEmployee == null
+                ? null
+                : findAssignableEmployee(
+                        restaurantId,
+                        sourceEmployee.getId(),
+                        targetShift.getJobCode().getId(),
+                        overrideConflicts
+                );
+
+        sourceShift.setEmployee(nextSourceEmployee);
+        sourceShift.setShiftDate(targetDate);
+        sourceShift.setStatus(nextSourceEmployee == null ? ShiftStatus.UNASSIGNED : ShiftStatus.ASSIGNED);
+        targetShift.setEmployee(nextTargetEmployee);
+        targetShift.setShiftDate(sourceDate);
+        targetShift.setStatus(nextTargetEmployee == null ? ShiftStatus.UNASSIGNED : ShiftStatus.ASSIGNED);
+
+        Set<Long> swappedShiftIds = Set.of(sourceShift.getId(), targetShift.getId());
+        validateNoOverlap(restaurantId, sourceShift, nextSourceEmployee, swappedShiftIds);
+        validateNoOverlap(restaurantId, targetShift, nextTargetEmployee, swappedShiftIds);
+
+        shiftRepository.save(sourceShift);
+        shiftRepository.save(targetShift);
+        return toResponseWithShifts(schedule);
+    }
+
+    @Transactional
     public ShiftResponse clearAssignment(Long restaurantId, Long scheduleId, Long shiftId) {
         findEditableSchedule(restaurantId, scheduleId);
         Shift shift = findShift(restaurantId, scheduleId, shiftId);
@@ -341,6 +395,10 @@ public class ScheduleService {
     }
 
     private void validateNoOverlap(Long restaurantId, Shift shift, User employee) {
+        validateNoOverlap(restaurantId, shift, employee, shift.getId() == null ? Set.of() : Set.of(shift.getId()));
+    }
+
+    private void validateNoOverlap(Long restaurantId, Shift shift, User employee, Set<Long> ignoredShiftIds) {
         if (employee == null) {
             return;
         }
@@ -353,7 +411,7 @@ public class ScheduleService {
                         shift.getShiftDate()
                 )
                 .stream()
-                .filter(existing -> shift.getId() == null || !existing.getId().equals(shift.getId()))
+                .filter(existing -> !ignoredShiftIds.contains(existing.getId()))
                 .anyMatch(existing -> overlaps(existing.getStartTime(), existing.getEndTime(), shift.getStartTime(), shift.getEndTime()));
 
         if (overlaps) {

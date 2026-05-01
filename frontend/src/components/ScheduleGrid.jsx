@@ -249,6 +249,10 @@ const ManagerEditableSchedule = ({
   onEditShift,
   onCreateShift,
   onContextMenu,
+  draggedShiftId,
+  onDragShiftStart,
+  onDragShiftEnd,
+  onDropShift,
 }) => {
   const weekDates = Array.from({ length: 7 }, (_, index) => {
     const start = new Date(`${weekStart}T00:00:00`)
@@ -289,30 +293,63 @@ const ManagerEditableSchedule = ({
                   ))
                   .sort(sortShiftsByTime)
                 const isSelectedCell = selectedCell?.employeeId === employee.id && selectedCell?.shiftDate === date
+                const singleTargetShift = cellShifts.length === 1 ? rawById.get(cellShifts[0].id) : null
+                const canDropShift = Boolean(draggedShiftId)
+                  && (
+                    cellShifts.length === 0
+                    || (singleTargetShift && singleTargetShift.id !== draggedShiftId)
+                  )
                 return (
                   <td
                     key={date}
                     onClick={() => onSelectCell(employee.id, date)}
                     onContextMenu={event => onContextMenu(event, { type: 'cell', employeeId: employee.id, shiftDate: date })}
-                    className={`p-1 border-b border-gray-200 dark:border-gray-700 align-top min-w-32 h-24 cursor-pointer ${isSelectedCell ? 'bg-green-50 dark:bg-green-900/20' : ''}`}
+                    onDragOver={event => {
+                      if (canDropShift) event.preventDefault()
+                    }}
+                    onDrop={event => {
+                      if (!canDropShift) return
+                      event.preventDefault()
+                      onDropShift(employee.id, date, singleTargetShift)
+                    }}
+                    className={`p-1 border-b border-gray-200 dark:border-gray-700 align-top min-w-32 h-24 cursor-pointer ${isSelectedCell ? 'bg-green-50 dark:bg-green-900/20' : ''} ${canDropShift ? 'bg-green-50/60 dark:bg-green-900/10' : ''}`}
                   >
                     {cellShifts.map(shift => {
                       const rawShift = rawById.get(shift.id)
                       const isSelectedShift = selectedShiftId === shift.id
+                      const isDraggedShift = draggedShiftId === shift.id
+                      const canDropOnShift = Boolean(draggedShiftId) && draggedShiftId !== shift.id
                       return (
                         <button
                           key={shift.id}
                           type="button"
+                          draggable
                           onClick={event => {
                             event.stopPropagation()
                             onSelectShift(shift.id)
+                          }}
+                          onDragStart={event => {
+                            event.stopPropagation()
+                            event.dataTransfer.effectAllowed = 'move'
+                            event.dataTransfer.setData('text/plain', shift.id.toString())
+                            onDragShiftStart(rawShift)
+                          }}
+                          onDragEnd={onDragShiftEnd}
+                          onDragOver={event => {
+                            if (canDropOnShift) event.preventDefault()
+                          }}
+                          onDrop={event => {
+                            if (!canDropOnShift) return
+                            event.preventDefault()
+                            event.stopPropagation()
+                            onDropShift(employee.id, date, rawShift)
                           }}
                           onDoubleClick={event => {
                             event.stopPropagation()
                             onEditShift(rawShift)
                           }}
                           onContextMenu={event => onContextMenu(event, { type: 'shift', shift: rawShift })}
-                          className={`block w-full text-left rounded text-white text-xs p-1.5 mb-1 last:mb-0 ring-offset-1 dark:ring-offset-gray-900 ${isSelectedShift ? 'ring-2 ring-gray-900 dark:ring-white' : ''}`}
+                          className={`block w-full text-left rounded text-white text-xs p-1.5 mb-1 last:mb-0 ring-offset-1 dark:ring-offset-gray-900 ${isSelectedShift ? 'ring-2 ring-gray-900 dark:ring-white' : ''} ${isDraggedShift ? 'opacity-50' : ''}`}
                           style={{ backgroundColor: getJobCodeColor(shift) }}
                         >
                           <div className="font-medium">{shift.role}</div>
@@ -351,7 +388,7 @@ const ManagerEditableSchedule = ({
       )}
       {copiedShift && (
         <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          Copied {copiedShift.jobCodeName} shift, {apiTimeToInput(copiedShift.startTime)}-{apiTimeToInput(copiedShift.endTime)}.
+          {copiedShift.cutSourceId ? 'Cut' : 'Copied'} {copiedShift.jobCodeName} shift, {apiTimeToInput(copiedShift.startTime)}-{apiTimeToInput(copiedShift.endTime)}.
         </p>
       )}
     </div>
@@ -383,6 +420,7 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
   const [selectedCell, setSelectedCell] = useState(null)
   const [copiedShift, setCopiedShift] = useState(null)
   const [lastPastedShift, setLastPastedShift] = useState(null)
+  const [draggedShift, setDraggedShift] = useState(null)
   const [contextMenu, setContextMenu] = useState(null)
   const [pendingWarningAction, setPendingWarningAction] = useState(null)
   const [success, setSuccess] = useState('')
@@ -595,8 +633,8 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
     onScheduleChanged?.()
   }
 
-  const runWithAssignmentWarnings = async (form, action) => {
-    const warnings = buildShiftWarnings({
+  const warningsForShiftForm = (form, label = '') => (
+    buildShiftWarnings({
       employeeId: form.employeeId,
       jobCodeId: form.jobCodeId,
       shiftDate: form.shiftDate,
@@ -605,7 +643,25 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
       assignments: employeeAssignments,
       availability: availabilityEntries,
       timeOffRequests,
-    })
+    }).map(warning => label ? `${label}: ${warning}` : warning)
+  )
+
+  const runWithAssignmentWarnings = async (form, action) => {
+    const warnings = warningsForShiftForm(form)
+
+    if (warnings.length > 0) {
+      setPendingWarningAction({
+        warnings,
+        action: () => action(true),
+      })
+      return
+    }
+
+    await action(false)
+  }
+
+  const runWithMultipleAssignmentWarnings = async (forms, action) => {
+    const warnings = forms.flatMap(({ form, label }) => warningsForShiftForm(form, label))
 
     if (warnings.length > 0) {
       setPendingWarningAction({
@@ -720,10 +776,19 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
   const copyShift = (shift) => {
     if (!shift) return
 
-    setCopiedShift(shift)
+    setCopiedShift({ ...shift, cutSourceId: null })
     setSelectedShiftId(shift.id)
     setContextMenu(null)
     setSuccess('Shift copied.')
+  }
+
+  const cutShift = (shift) => {
+    if (!shift) return
+
+    setCopiedShift({ ...shift, cutSourceId: shift.id })
+    setSelectedShiftId(shift.id)
+    setContextMenu(null)
+    setSuccess('Shift cut. Select a destination and paste to move it.')
   }
 
   const pasteShift = async (employeeId = selectedCell?.employeeId, shiftDate = selectedCell?.shiftDate) => {
@@ -753,11 +818,111 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
           endTime: nextForm.endTime,
           overrideConflicts,
         })
-        setLastPastedShift({ scheduleId: schedule.id, shiftId: pasted.id })
-        setSuccess('Shift pasted.')
+        if (copiedShift.cutSourceId) {
+          await schedulesApi.deleteShift(schedule.id, copiedShift.cutSourceId)
+          setCopiedShift(null)
+        }
+        setLastPastedShift({
+          scheduleId: schedule.id,
+          shiftId: pasted.id,
+          restoredShift: copiedShift.cutSourceId ? copiedShift : null,
+        })
+        setSelectedShiftId(pasted.id)
+        setSuccess(copiedShift.cutSourceId ? 'Shift moved.' : 'Shift pasted.')
         await refreshScheduleAfterEdit()
       } catch (err) {
-        setError(err.message || 'Unable to paste shift.')
+        setError(err.message || (copiedShift.cutSourceId ? 'Unable to move shift.' : 'Unable to paste shift.'))
+      } finally {
+        setIsLoading(false)
+      }
+    })
+  }
+
+  const moveShift = async (shift, employeeId, shiftDate) => {
+    if (!schedule || !shift || !shiftDate) return
+    if (shift.employeeId === employeeId && shift.shiftDate === shiftDate) return
+
+    const nextForm = {
+      id: shift.id,
+      jobCodeId: shift.jobCodeId?.toString() || '',
+      employeeId: employeeId == null ? '' : employeeId.toString(),
+      shiftDate,
+      startTime: apiTimeToInput(shift.startTime),
+      endTime: apiTimeToInput(shift.endTime),
+    }
+
+    setContextMenu(null)
+    setShiftForm(nextForm)
+    await runWithAssignmentWarnings(nextForm, async (overrideConflicts) => {
+      setIsLoading(true)
+      setError('')
+      setSuccess('')
+      try {
+        const payload = {
+          jobCodeId: Number(nextForm.jobCodeId),
+          shiftDate: nextForm.shiftDate,
+          startTime: nextForm.startTime,
+          endTime: nextForm.endTime,
+          overrideConflicts,
+        }
+        if (nextForm.employeeId) {
+          payload.employeeId = Number(nextForm.employeeId)
+        }
+
+        await schedulesApi.updateShift(schedule.id, shift.id, payload)
+        if (!nextForm.employeeId) {
+          await schedulesApi.clearShiftAssignment(schedule.id, shift.id)
+        }
+        setSelectedShiftId(shift.id)
+        setSelectedCell({ employeeId, shiftDate })
+        setSuccess('Shift moved.')
+        await refreshScheduleAfterEdit()
+      } catch (err) {
+        setError(err.message || 'Unable to move shift.')
+      } finally {
+        setIsLoading(false)
+      }
+    })
+  }
+
+  const swapShifts = async (sourceShift, targetShift, targetEmployeeId, targetShiftDate) => {
+    if (!schedule || !sourceShift || !targetShift || sourceShift.id === targetShift.id) return
+
+    const sourceEmployeeId = sourceShift.employeeId == null ? '' : sourceShift.employeeId.toString()
+    const sourceShiftDate = sourceShift.shiftDate
+    const sourceForm = {
+      id: sourceShift.id,
+      jobCodeId: sourceShift.jobCodeId?.toString() || '',
+      employeeId: targetEmployeeId == null ? '' : targetEmployeeId.toString(),
+      shiftDate: targetShiftDate,
+      startTime: apiTimeToInput(sourceShift.startTime),
+      endTime: apiTimeToInput(sourceShift.endTime),
+    }
+    const targetForm = {
+      id: targetShift.id,
+      jobCodeId: targetShift.jobCodeId?.toString() || '',
+      employeeId: sourceEmployeeId,
+      shiftDate: sourceShiftDate,
+      startTime: apiTimeToInput(targetShift.startTime),
+      endTime: apiTimeToInput(targetShift.endTime),
+    }
+
+    await runWithMultipleAssignmentWarnings([
+      { form: sourceForm, label: `${sourceShift.jobCodeName || 'Dragged shift'} reassignment` },
+      { form: targetForm, label: `${targetShift.jobCodeName || 'Target shift'} reassignment` },
+    ], async (overrideConflicts) => {
+      setIsLoading(true)
+      setError('')
+      setSuccess('')
+      try {
+        const swapped = await schedulesApi.swapShifts(schedule.id, sourceShift.id, targetShift.id, overrideConflicts)
+        setSchedule(swapped)
+        setSelectedShiftId(sourceShift.id)
+        setSelectedCell({ employeeId: targetEmployeeId, shiftDate: targetShiftDate })
+        setSuccess('Shifts swapped.')
+        onScheduleChanged?.()
+      } catch (err) {
+        setError(err.message || 'Unable to swap shifts.')
       } finally {
         setIsLoading(false)
       }
@@ -774,9 +939,20 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
 
     try {
       await schedulesApi.deleteShift(lastPastedShift.scheduleId, lastPastedShift.shiftId)
+      if (lastPastedShift.restoredShift) {
+        const restoredShift = lastPastedShift.restoredShift
+        await schedulesApi.createShift(lastPastedShift.scheduleId, {
+          jobCodeId: Number(restoredShift.jobCodeId),
+          employeeId: restoredShift.employeeId ? Number(restoredShift.employeeId) : null,
+          shiftDate: restoredShift.shiftDate,
+          startTime: apiTimeToInput(restoredShift.startTime),
+          endTime: apiTimeToInput(restoredShift.endTime),
+          overrideConflicts: true,
+        })
+      }
       setLastPastedShift(null)
       setSelectedShiftId(null)
-      setSuccess('Pasted shift undone.')
+      setSuccess(lastPastedShift.restoredShift ? 'Moved shift undone.' : 'Pasted shift undone.')
       await refreshScheduleAfterEdit()
     } catch (err) {
       setLastPastedShift(null)
@@ -794,6 +970,35 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
       x: event.clientX,
       y: event.clientY,
     })
+  }
+
+  const handleDragShiftStart = (shift) => {
+    if (!shift) return
+
+    setDraggedShift(shift)
+    setSelectedShiftId(shift.id)
+    setContextMenu(null)
+  }
+
+  const handleDropShift = async (employeeId, shiftDate, targetShift = null) => {
+    if (!draggedShift) return
+
+    const targetShifts = scheduleShifts.filter(shift => (
+      shift.shiftDate === shiftDate
+      && (employeeId == null ? !shift.employeeId : Number(shift.employeeId) === Number(employeeId))
+      && shift.id !== draggedShift.id
+    ))
+    const shiftToMove = draggedShift
+    const shiftToSwap = targetShift || (targetShifts.length === 1 ? targetShifts[0] : null)
+
+    setDraggedShift(null)
+    if (shiftToSwap) {
+      await swapShifts(shiftToMove, shiftToSwap, employeeId, shiftDate)
+      return
+    }
+    if (targetShifts.length > 0) return
+
+    await moveShift(shiftToMove, employeeId, shiftDate)
   }
 
   const copyWeekToNextWeek = async () => {
@@ -879,6 +1084,14 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
         if (selectedShift) {
           event.preventDefault()
           copyShift(selectedShift)
+        }
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'x') {
+        const selectedShift = scheduleShifts.find(shift => shift.id === selectedShiftId)
+        if (selectedShift) {
+          event.preventDefault()
+          cutShift(selectedShift)
         }
       }
 
@@ -1214,6 +1427,10 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
               onEditShift={openEditShift}
               onCreateShift={openCreateShift}
               onContextMenu={handleContextMenu}
+              draggedShiftId={draggedShift?.id || null}
+              onDragShiftStart={handleDragShiftStart}
+              onDragShiftEnd={() => setDraggedShift(null)}
+              onDropShift={handleDropShift}
             />
           )}
           {view === 'employee' && (role !== 'manager' || isPublished) && <EmployeeRowView employees={employees} shifts={shifts} />}
@@ -1242,6 +1459,13 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
                 className="block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 Copy
+              </button>
+              <button
+                type="button"
+                onClick={() => cutShift(contextMenu.shift)}
+                className="block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                Cut
               </button>
               <button
                 type="button"

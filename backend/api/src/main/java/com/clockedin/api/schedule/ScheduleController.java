@@ -6,6 +6,7 @@ import com.clockedin.api.schedule.dto.CopyScheduleWeekRequest;
 import com.clockedin.api.schedule.dto.GenerateScheduleRequest;
 import com.clockedin.api.schedule.dto.ScheduleResponse;
 import com.clockedin.api.schedule.dto.ShiftResponse;
+import com.clockedin.api.schedule.dto.SwapShiftRequest;
 import com.clockedin.api.schedule.dto.UpdateShiftRequest;
 import com.clockedin.api.schedule.dto.UpsertShiftRequest;
 import jakarta.validation.Valid;
@@ -120,6 +121,23 @@ public class ScheduleController {
             @RequestBody UpdateShiftRequest request
     ) {
         return scheduleService.updateShift(userDetails.getRestaurantId(), scheduleId, shiftId, request);
+    }
+
+    @PreAuthorize("hasRole('MANAGER')")
+    @PostMapping("/{scheduleId}/shifts/{shiftId}/swap")
+    public ScheduleResponse swapShifts(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long scheduleId,
+            @PathVariable Long shiftId,
+            @Valid @RequestBody SwapShiftRequest request
+    ) {
+        return scheduleService.swapShifts(
+                userDetails.getRestaurantId(),
+                scheduleId,
+                shiftId,
+                request.targetShiftId(),
+                Boolean.TRUE.equals(request.overrideConflicts())
+        );
     }
 
     @PreAuthorize("hasRole('MANAGER')")

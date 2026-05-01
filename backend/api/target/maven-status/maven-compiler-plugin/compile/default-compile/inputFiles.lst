@@ -1,4 +1,10 @@
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/ApiApplication.java
+/home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/announcement/Announcement.java
+/home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/announcement/AnnouncementController.java
+/home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/announcement/AnnouncementRepository.java
+/home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/announcement/AnnouncementService.java
+/home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/announcement/dto/AnnouncementResponse.java
+/home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/announcement/dto/CreateAnnouncementRequest.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/auth/AuthController.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/auth/AuthService.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/auth/CustomUserDetails.java
@@ -95,6 +101,7 @@
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/schedule/dto/ScheduleResponse.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/schedule/dto/ShiftResponse.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/schedule/dto/ShiftTemplateResponse.java
+/home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/schedule/dto/SwapShiftRequest.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/schedule/dto/UpdateShiftRequest.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/schedule/dto/UpsertPreferredShiftAssignmentRequest.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/schedule/dto/UpsertShiftRequest.java

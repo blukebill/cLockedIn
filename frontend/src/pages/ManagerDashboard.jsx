@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { getJobCodeColor } from '../constants/roleColors'
 import { getWeekDates } from '../utils/dateUtils'
 import { parseShiftStart, parseShiftEnd, calculateHours } from '../utils/scheduleUtils'
-import { schedulesApi } from '../services/api'
+import { announcementsApi, schedulesApi } from '../services/api'
 import { scheduleToShifts, weekStartForOffset } from '../utils/apiScheduleAdapter'
 
 function ManagerDashboard({ setPage, user, scheduleVersion }) {
@@ -11,6 +11,10 @@ function ManagerDashboard({ setPage, user, scheduleVersion }) {
   const [schedule, setSchedule] = useState(null)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const [announcementTitle, setAnnouncementTitle] = useState('')
+  const [announcementBody, setAnnouncementBody] = useState('')
+  const [announcementStatus, setAnnouncementStatus] = useState('')
+  const [isSendingAnnouncement, setIsSendingAnnouncement] = useState(false)
 
   useEffect(() => {
     schedulesApi.getWeek(weekStartForOffset(0))
@@ -62,10 +66,26 @@ function ManagerDashboard({ setPage, user, scheduleVersion }) {
       message: `${shift.day} ${shift.startTime} ${shift.role} shift is unassigned`,
     }))
 
-  const announcements = [
-    { id: 1, title: 'Holiday Hours', preview: 'Hey team, we will be operating on reduced hours this Sunday...' },
-    { id: 2, title: 'Schedule Posted', preview: "Next week's schedule has been posted. Please review your shifts..." },
-  ]
+  const sendAnnouncement = async (event) => {
+    event.preventDefault()
+    if (!announcementTitle.trim() || !announcementBody.trim()) return
+
+    setAnnouncementStatus('')
+    setIsSendingAnnouncement(true)
+    try {
+      await announcementsApi.create({
+        title: announcementTitle.trim(),
+        body: announcementBody.trim(),
+      })
+      setAnnouncementTitle('')
+      setAnnouncementBody('')
+      setAnnouncementStatus('Announcement sent.')
+    } catch (err) {
+      setAnnouncementStatus(err.message || 'Unable to send announcement.')
+    } finally {
+      setIsSendingAnnouncement(false)
+    }
+  }
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -186,16 +206,39 @@ function ManagerDashboard({ setPage, user, scheduleVersion }) {
             </div>
           ))}
 
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mt-5 mb-3">Announcements</h2>
-          {announcements.map(a => (
-            <div key={a.id}
-              onClick={() => setPage('messages')}
-              className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 mb-2.5 cursor-pointer hover:border-green-400 dark:hover:border-green-600 transition-colors"
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mt-5 mb-3">Send announcement</h2>
+          <form
+            onSubmit={sendAnnouncement}
+            className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 space-y-3"
+          >
+            <input
+              value={announcementTitle}
+              onChange={event => setAnnouncementTitle(event.target.value)}
+              maxLength={120}
+              placeholder="Title"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+            <textarea
+              value={announcementBody}
+              onChange={event => setAnnouncementBody(event.target.value)}
+              maxLength={2000}
+              rows={4}
+              placeholder="Announcement"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+            {announcementStatus && (
+              <p className={`text-xs ${announcementStatus === 'Announcement sent.' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                {announcementStatus}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={isSendingAnnouncement || !announcementTitle.trim() || !announcementBody.trim()}
+              className="w-full px-3 py-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold"
             >
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">ⓘ {a.title}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{a.preview}</p>
-            </div>
-          ))}
+              {isSendingAnnouncement ? 'Sending...' : 'Send Announcement'}
+            </button>
+          </form>
         </div>
 
       </div>

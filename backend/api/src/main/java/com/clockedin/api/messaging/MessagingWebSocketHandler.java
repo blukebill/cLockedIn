@@ -1,5 +1,6 @@
 package com.clockedin.api.messaging;
 
+import com.clockedin.api.announcement.dto.AnnouncementResponse;
 import com.clockedin.api.auth.CustomUserDetails;
 import com.clockedin.api.auth.CustomUserDetailsService;
 import com.clockedin.api.auth.JwtService;
@@ -106,14 +107,19 @@ public class MessagingWebSocketHandler extends TextWebSocketHandler {
 
     public void broadcastMessage(Long restaurantId, MessageResponse message) {
         List<Long> participantIds = messagingService.getParticipantIds(restaurantId, message.conversationId());
-        WebSocketOutboundMessage outbound = new WebSocketOutboundMessage("MESSAGE", message, null);
+        WebSocketOutboundMessage outbound = new WebSocketOutboundMessage("MESSAGE", message, null, null);
         broadcastToParticipants(participantIds, outbound);
     }
 
     public void broadcastReadReceipt(Long restaurantId, ReadReceiptResponse readReceipt) {
         List<Long> participantIds = messagingService.getParticipantIds(restaurantId, readReceipt.conversationId());
-        WebSocketOutboundMessage outbound = new WebSocketOutboundMessage("READ_RECEIPT", null, readReceipt);
+        WebSocketOutboundMessage outbound = new WebSocketOutboundMessage("READ_RECEIPT", null, readReceipt, null);
         broadcastToParticipants(participantIds, outbound);
+    }
+
+    public void broadcastAnnouncement(List<Long> recipientIds, AnnouncementResponse announcement) {
+        WebSocketOutboundMessage outbound = new WebSocketOutboundMessage("ANNOUNCEMENT", null, null, announcement);
+        broadcastToParticipants(recipientIds, outbound);
     }
 
     private void broadcastToParticipants(List<Long> participantIds, WebSocketOutboundMessage outbound) {

@@ -1,4 +1,4 @@
-function Navbar({ page, setPage, role, onLogout, messageUnreadCount = 0 }) {
+function Navbar({ page, setPage, role, onLogout, messageUnreadCount = 0, onOpenAnnouncementInbox }) {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'schedule', label: 'Schedule' },
@@ -43,8 +43,12 @@ function Navbar({ page, setPage, role, onLogout, messageUnreadCount = 0 }) {
 
       {/* Right icons */}
       <div className="flex items-center gap-4">
-        <button className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors text-lg">
-          🔔
+        <button
+          type="button"
+          onClick={onOpenAnnouncementInbox}
+          className="px-3 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        >
+          Inbox
         </button>
         <div
           onClick={onLogout}

@@ -17,6 +17,7 @@ com/clockedin/api/messaging/ChatConversationReadState.class
 com/clockedin/api/timeoff/TimeOffRequestController.class
 com/clockedin/api/jobcode/JobCodeRepository.class
 com/clockedin/api/availability/dto/UpsertAvailabilityRequest.class
+com/clockedin/api/announcement/dto/CreateAnnouncementRequest.class
 com/clockedin/api/messaging/dto/UserSummaryResponse.class
 com/clockedin/api/timeoff/dto/UpdateTimeOffStatusRequest.class
 com/clockedin/api/auth/AuthService.class
@@ -24,15 +25,18 @@ com/clockedin/api/messaging/MessagingController.class
 com/clockedin/api/user/EmployeeController.class
 com/clockedin/api/schedule/ScheduleStatus.class
 com/clockedin/api/staffing/StaffingRuleRepository.class
+com/clockedin/api/announcement/AnnouncementRepository.class
 com/clockedin/api/messaging/ChatConversationParticipantRepository.class
 com/clockedin/api/schedule/ShiftTemplateRepository.class
 com/clockedin/api/schedule/dto/UpsertShiftTemplateRequest.class
 com/clockedin/api/schedule/PreferredShiftAssignmentService.class
+com/clockedin/api/schedule/dto/SwapShiftRequest.class
 com/clockedin/api/timeoff/TimeOffRequestRepository.class
 com/clockedin/api/forecast/dto/ForecastStaffingRequirementResponse.class
 com/clockedin/api/restaurant/dto/RestaurantSettingsResponse.class
 com/clockedin/api/schedule/ShiftSource.class
 com/clockedin/api/config/SecurityConfig.class
+com/clockedin/api/announcement/AnnouncementController.class
 com/clockedin/api/messaging/dto/MessageResponse.class
 com/clockedin/api/messaging/ChatMessage.class
 com/clockedin/api/user/UserRepository.class
@@ -70,6 +74,7 @@ com/clockedin/api/messaging/ConversationType.class
 com/clockedin/api/timeoff/dto/TimeOffRequestResponse.class
 com/clockedin/api/availability/dto/AvailabilityResponse.class
 com/clockedin/api/messaging/dto/CreateConversationRequest.class
+com/clockedin/api/announcement/AnnouncementService.class
 com/clockedin/api/auth/AuthController.class
 com/clockedin/api/forecast/ForecastRepository.class
 com/clockedin/api/auth/CustomUserDetails.class
@@ -77,6 +82,7 @@ com/clockedin/api/forecast/ForecastController.class
 com/clockedin/api/schedule/ShiftTemplateController.class
 com/clockedin/api/rolepriority/EmployeeRolePriority.class
 com/clockedin/api/schedule/SchedulerInputSnapshot.class
+com/clockedin/api/announcement/Announcement.class
 com/clockedin/api/messaging/ChatMessageRepository.class
 com/clockedin/api/schedule/dto/UpdateShiftRequest.class
 com/clockedin/api/schedule/ScheduleRepository.class
@@ -118,5 +124,6 @@ com/clockedin/api/rolepriority/dto/EmployeeRolePriorityResponse.class
 com/clockedin/api/forecast/ForecastService.class
 com/clockedin/api/restaurant/RestaurantController.class
 com/clockedin/api/user/dto/CreateEmployeeRequest.class
+com/clockedin/api/announcement/dto/AnnouncementResponse.class
 com/clockedin/api/schedule/Schedule.class
 com/clockedin/api/user/Role.class
