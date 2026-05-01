@@ -89,6 +89,7 @@ com/clockedin/api/auth/JwtAuthenticationFilter.class
 com/clockedin/api/rolepriority/EmployeeRolePriorityService.class
 com/clockedin/api/user/User.class
 com/clockedin/api/staffing/StaffingRuleService.class
+com/clockedin/api/schedule/dto/CopyScheduleWeekRequest.class
 com/clockedin/api/staffing/dto/UpsertStaffingRuleRequest.class
 com/clockedin/api/jobcode/JobCode.class
 com/clockedin/api/schedule/ShiftTemplateService.class

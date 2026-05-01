@@ -10,6 +10,7 @@ public record UpsertShiftRequest(
         Long employeeId,
         @NotNull LocalDate shiftDate,
         @NotNull LocalTime startTime,
-        @NotNull LocalTime endTime
+        @NotNull LocalTime endTime,
+        Boolean overrideConflicts
 ) {
 }

@@ -68,6 +68,7 @@
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/schedule/ShiftTemplateRepository.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/schedule/ShiftTemplateService.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/schedule/dto/AssignShiftRequest.java
+/home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/schedule/dto/CopyScheduleWeekRequest.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/schedule/dto/GenerateScheduleRequest.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/schedule/dto/PreferredShiftAssignmentResponse.java
 /home/augur/cLockedIn/backend/api/src/main/java/com/clockedin/api/schedule/dto/ScheduleResponse.java

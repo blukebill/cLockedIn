@@ -2,6 +2,7 @@ package com.clockedin.api.schedule;
 
 import com.clockedin.api.auth.CustomUserDetails;
 import com.clockedin.api.schedule.dto.AssignShiftRequest;
+import com.clockedin.api.schedule.dto.CopyScheduleWeekRequest;
 import com.clockedin.api.schedule.dto.GenerateScheduleRequest;
 import com.clockedin.api.schedule.dto.ScheduleResponse;
 import com.clockedin.api.schedule.dto.ShiftResponse;
@@ -129,7 +130,24 @@ public class ScheduleController {
             @PathVariable Long shiftId,
             @Valid @RequestBody AssignShiftRequest request
     ) {
-        return scheduleService.assignShift(userDetails.getRestaurantId(), scheduleId, shiftId, request.employeeId());
+        return scheduleService.assignShift(
+                userDetails.getRestaurantId(),
+                scheduleId,
+                shiftId,
+                request.employeeId(),
+                Boolean.TRUE.equals(request.overrideConflicts())
+        );
+    }
+
+    @PreAuthorize("hasRole('MANAGER')")
+    @PostMapping("/{id}/copy")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ScheduleResponse copyScheduleWeek(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long id,
+            @Valid @RequestBody CopyScheduleWeekRequest request
+    ) {
+        return scheduleService.copyWeek(userDetails.getRestaurantId(), id, request.targetStartDate());
     }
 
     @PreAuthorize("hasRole('MANAGER')")

@@ -2,11 +2,15 @@ import { useCallback, useEffect, useState } from 'react'
 import { days } from '../constants/days'
 import { getJobCodeColor } from '../constants/roleColors'
 import {
+  availabilityApi,
+  employeeJobCodesApi,
+  employeesApi,
   forecastsApi,
   jobCodesApi,
   restaurantSettingsApi,
   schedulesApi,
   staffingRulesApi,
+  timeOffRequestsApi,
 } from '../services/api'
 import {
   addDays,
@@ -20,6 +24,15 @@ import {
 } from '../utils/apiScheduleAdapter'
 
 const dayCodes = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
+
+const emptyShiftForm = {
+  id: null,
+  jobCodeId: '',
+  employeeId: '',
+  shiftDate: '',
+  startTime: '09:00',
+  endTime: '17:00',
+}
 
 const createEmptyStaffingForm = (jobCodeId = '') => ({
   id: null,
@@ -51,6 +64,67 @@ const sortShiftsByTime = (first, second) => (
   || first.role.localeCompare(second.role)
   || first.id - second.id
 )
+
+const apiTimeToInput = (value) => value?.slice(0, 5) || ''
+
+const dayCodeForDate = (isoDate) => {
+  const date = new Date(`${isoDate}T00:00:00`)
+  return dayCodes[(date.getDay() + 6) % 7]
+}
+
+const overlaps = (firstStart, firstEnd, secondStart, secondEnd) => (
+  firstStart < secondEnd && secondStart < firstEnd
+)
+
+const buildShiftWarnings = ({
+  employeeId,
+  jobCodeId,
+  shiftDate,
+  startTime,
+  endTime,
+  assignments,
+  availability,
+  timeOffRequests,
+}) => {
+  if (!employeeId) return []
+
+  const numericEmployeeId = Number(employeeId)
+  const numericJobCodeId = Number(jobCodeId)
+  const warnings = []
+  const hasJobCode = assignments.some(assignment =>
+    Number(assignment.employeeId) === numericEmployeeId && Number(assignment.jobCodeId) === numericJobCodeId
+  )
+
+  if (!hasJobCode) {
+    warnings.push('This employee is not assigned to the selected job code.')
+  }
+
+  const dayOfWeek = dayCodeForDate(shiftDate)
+  const availabilityEntry = availability.find(entry =>
+    Number(entry.employeeId) === numericEmployeeId && entry.dayOfWeek === dayOfWeek
+  )
+  const availableForShift = availabilityEntry?.available
+    && apiTimeToInput(availabilityEntry.startTime) <= startTime
+    && apiTimeToInput(availabilityEntry.endTime) >= endTime
+
+  if (!availableForShift) {
+    warnings.push('This employee is not available for the full shift time.')
+  }
+
+  const hasApprovedTimeOff = timeOffRequests.some(request =>
+    Number(request.userId) === numericEmployeeId
+    && request.status === 'APPROVED'
+    && request.startDate <= shiftDate
+    && request.endDate >= shiftDate
+    && overlaps(apiTimeToInput(request.startTime), apiTimeToInput(request.endTime), startTime, endTime)
+  )
+
+  if (hasApprovedTimeOff) {
+    warnings.push('This employee has approved time off during this shift.')
+  }
+
+  return warnings
+}
 
 const ShiftBlock = ({ shift }) => (
   <div
@@ -162,6 +236,128 @@ const RoleRowView = ({ roles, shifts }) => (
   </div>
 )
 
+const ManagerEditableSchedule = ({
+  employees,
+  shifts,
+  rawShifts,
+  weekStart,
+  selectedShiftId,
+  selectedCell,
+  copiedShift,
+  onSelectShift,
+  onSelectCell,
+  onEditShift,
+  onCreateShift,
+  onContextMenu,
+}) => {
+  const weekDates = Array.from({ length: 7 }, (_, index) => {
+    const start = new Date(`${weekStart}T00:00:00`)
+    return toIsoDate(addDays(start, index))
+  })
+  const employeesWithUnassigned = [
+    ...employees,
+    { id: null, name: 'Unassigned' },
+  ]
+
+  const rawById = new Map(rawShifts.map(shift => [shift.id, shift]))
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr>
+            <th className="p-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Employee</th>
+            {weekDates.map(date => (
+              <th key={date} className="p-2 text-center text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                <div>{dayNames[new Date(`${date}T00:00:00`).getDay()]}</div>
+                <div className="text-xs font-normal text-gray-400 dark:text-gray-500">{formatDateLabel(date, { month: 'short', day: 'numeric' })}</div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {employeesWithUnassigned.map(employee => (
+            <tr key={employee.id ?? 'unassigned'}>
+              <td className="p-2 text-sm text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap">
+                {employee.name}
+              </td>
+              {weekDates.map(date => {
+                const cellShifts = shifts
+                  .filter(shift => (
+                    shift.shiftDate === date
+                    && (employee.id == null ? shift.isUnassigned : Number(shift.employeeId) === Number(employee.id))
+                  ))
+                  .sort(sortShiftsByTime)
+                const isSelectedCell = selectedCell?.employeeId === employee.id && selectedCell?.shiftDate === date
+                return (
+                  <td
+                    key={date}
+                    onClick={() => onSelectCell(employee.id, date)}
+                    onContextMenu={event => onContextMenu(event, { type: 'cell', employeeId: employee.id, shiftDate: date })}
+                    className={`p-1 border-b border-gray-200 dark:border-gray-700 align-top min-w-32 h-24 cursor-pointer ${isSelectedCell ? 'bg-green-50 dark:bg-green-900/20' : ''}`}
+                  >
+                    {cellShifts.map(shift => {
+                      const rawShift = rawById.get(shift.id)
+                      const isSelectedShift = selectedShiftId === shift.id
+                      return (
+                        <button
+                          key={shift.id}
+                          type="button"
+                          onClick={event => {
+                            event.stopPropagation()
+                            onSelectShift(shift.id)
+                          }}
+                          onDoubleClick={event => {
+                            event.stopPropagation()
+                            onEditShift(rawShift)
+                          }}
+                          onContextMenu={event => onContextMenu(event, { type: 'shift', shift: rawShift })}
+                          className={`block w-full text-left rounded text-white text-xs p-1.5 mb-1 last:mb-0 ring-offset-1 dark:ring-offset-gray-900 ${isSelectedShift ? 'ring-2 ring-gray-900 dark:ring-white' : ''}`}
+                          style={{ backgroundColor: getJobCodeColor(shift) }}
+                        >
+                          <div className="font-medium">{shift.role}</div>
+                          <div className="opacity-90">{shift.startTime} - {shift.endTime}</div>
+                          {shift.isUnassigned && <div className="opacity-90">Unassigned</div>}
+                        </button>
+                      )
+                    })}
+                    {cellShifts.length === 0 && (
+                      <div className="flex h-full min-h-16 items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={event => {
+                            event.stopPropagation()
+                            onCreateShift(employee.id, date)
+                          }}
+                          className="h-8 w-8 rounded-full border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:border-green-500 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+                          title="Create shift"
+                        >
+                          +
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {rawShifts.length === 0 && (
+        <div className="py-10 text-center border-b border-gray-200 dark:border-gray-700">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">No shifts were generated for this week.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Create shifts manually or go back to the generation setup.</p>
+        </div>
+      )}
+      {copiedShift && (
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          Copied {copiedShift.jobCodeName} shift, {apiTimeToInput(copiedShift.startTime)}-{apiTimeToInput(copiedShift.endTime)}.
+        </p>
+      )}
+    </div>
+  )
+}
+
 function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPublished, setPublishedWeek, onScheduleChanged }) {
   const view = 'employee'
   const [weekStart, setWeekStart] = useState(nextWeekStart())
@@ -177,6 +373,19 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
   const [staffingRules, setStaffingRules] = useState([])
   const [staffingForm, setStaffingForm] = useState(createEmptyStaffingForm())
   const [staffingRuleToDelete, setStaffingRuleToDelete] = useState(null)
+  const [teamMembers, setTeamMembers] = useState([])
+  const [employeeAssignments, setEmployeeAssignments] = useState([])
+  const [availabilityEntries, setAvailabilityEntries] = useState([])
+  const [timeOffRequests, setTimeOffRequests] = useState([])
+  const [shiftForm, setShiftForm] = useState(emptyShiftForm)
+  const [showShiftModal, setShowShiftModal] = useState(false)
+  const [selectedShiftId, setSelectedShiftId] = useState(null)
+  const [selectedCell, setSelectedCell] = useState(null)
+  const [copiedShift, setCopiedShift] = useState(null)
+  const [lastPastedShift, setLastPastedShift] = useState(null)
+  const [contextMenu, setContextMenu] = useState(null)
+  const [pendingWarningAction, setPendingWarningAction] = useState(null)
+  const [success, setSuccess] = useState('')
 
   const shifts = scheduleToShifts(schedule)
 
@@ -220,6 +429,27 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
       setForecasts(buildForecastRows(startDate))
     }
   }, [buildForecastRows, role])
+
+  const loadEditingInputs = useCallback(async () => {
+    if (role !== 'manager') return
+
+    try {
+      const [employeeData, assignmentData, availabilityData, timeOffData, codes] = await Promise.all([
+        employeesApi.list(),
+        employeeJobCodesApi.list(),
+        availabilityApi.list(),
+        timeOffRequestsApi.listRestaurant(),
+        jobCodesApi.list(),
+      ])
+      setTeamMembers(Array.isArray(employeeData) ? employeeData : [])
+      setEmployeeAssignments(Array.isArray(assignmentData) ? assignmentData : [])
+      setAvailabilityEntries(Array.isArray(availabilityData) ? availabilityData : [])
+      setTimeOffRequests(Array.isArray(timeOffData) ? timeOffData : [])
+      setJobCodes(Array.isArray(codes) ? codes : [])
+    } catch (err) {
+      setError(err.message || 'Unable to load schedule editing data.')
+    }
+  }, [role])
 
   const loadSchedule = useCallback(async (startDate) => {
     setIsLoading(true)
@@ -360,7 +590,243 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
     }
   }
 
+  const refreshScheduleAfterEdit = async () => {
+    await loadSchedule(weekStart)
+    onScheduleChanged?.()
+  }
+
+  const runWithAssignmentWarnings = async (form, action) => {
+    const warnings = buildShiftWarnings({
+      employeeId: form.employeeId,
+      jobCodeId: form.jobCodeId,
+      shiftDate: form.shiftDate,
+      startTime: form.startTime,
+      endTime: form.endTime,
+      assignments: employeeAssignments,
+      availability: availabilityEntries,
+      timeOffRequests,
+    })
+
+    if (warnings.length > 0) {
+      setPendingWarningAction({
+        warnings,
+        action: () => action(true),
+      })
+      return
+    }
+
+    await action(false)
+  }
+
+  const openCreateShift = (employeeId = null, shiftDate = weekStart) => {
+    setError('')
+    setSuccess('')
+    setContextMenu(null)
+    setShiftForm({
+      ...emptyShiftForm,
+      jobCodeId: jobCodes[0]?.id?.toString() || '',
+      employeeId: employeeId == null ? '' : employeeId.toString(),
+      shiftDate,
+    })
+    setShowShiftModal(true)
+  }
+
+  const openEditShift = (shift) => {
+    if (!shift) return
+
+    setError('')
+    setSuccess('')
+    setContextMenu(null)
+    setSelectedShiftId(shift.id)
+    setShiftForm({
+      id: shift.id,
+      jobCodeId: shift.jobCodeId?.toString() || '',
+      employeeId: shift.employeeId?.toString() || '',
+      shiftDate: shift.shiftDate,
+      startTime: apiTimeToInput(shift.startTime),
+      endTime: apiTimeToInput(shift.endTime),
+    })
+    setShowShiftModal(true)
+  }
+
+  const saveShift = async (overrideConflicts = false) => {
+    if (!schedule) return
+
+    setIsLoading(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const payload = {
+        jobCodeId: Number(shiftForm.jobCodeId),
+        shiftDate: shiftForm.shiftDate,
+        startTime: shiftForm.startTime,
+        endTime: shiftForm.endTime,
+        overrideConflicts,
+      }
+      if (shiftForm.employeeId) {
+        payload.employeeId = Number(shiftForm.employeeId)
+      }
+
+      if (shiftForm.id) {
+        await schedulesApi.updateShift(schedule.id, shiftForm.id, payload)
+        if (!shiftForm.employeeId) {
+          await schedulesApi.clearShiftAssignment(schedule.id, shiftForm.id)
+        }
+        setSuccess('Shift updated.')
+      } else {
+        await schedulesApi.createShift(schedule.id, {
+          ...payload,
+          employeeId: shiftForm.employeeId ? Number(shiftForm.employeeId) : null,
+        })
+        setSuccess('Shift created.')
+      }
+
+      setShowShiftModal(false)
+      await refreshScheduleAfterEdit()
+    } catch (err) {
+      setError(err.message || 'Unable to save shift.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleShiftSubmit = async (event) => {
+    event.preventDefault()
+    await runWithAssignmentWarnings(shiftForm, saveShift)
+  }
+
+  const deleteShift = async (shiftId) => {
+    if (!schedule || !shiftId) return
+
+    setIsLoading(true)
+    setError('')
+    setSuccess('')
+    setContextMenu(null)
+
+    try {
+      await schedulesApi.deleteShift(schedule.id, shiftId)
+      setSelectedShiftId(null)
+      setShowShiftModal(false)
+      setSuccess('Shift deleted.')
+      await refreshScheduleAfterEdit()
+    } catch (err) {
+      setError(err.message || 'Unable to delete shift.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const copyShift = (shift) => {
+    if (!shift) return
+
+    setCopiedShift(shift)
+    setSelectedShiftId(shift.id)
+    setContextMenu(null)
+    setSuccess('Shift copied.')
+  }
+
+  const pasteShift = async (employeeId = selectedCell?.employeeId, shiftDate = selectedCell?.shiftDate) => {
+    if (!schedule || !copiedShift || !shiftDate) return
+
+    const nextForm = {
+      id: null,
+      jobCodeId: copiedShift.jobCodeId?.toString() || '',
+      employeeId: employeeId == null ? '' : employeeId.toString(),
+      shiftDate,
+      startTime: apiTimeToInput(copiedShift.startTime),
+      endTime: apiTimeToInput(copiedShift.endTime),
+    }
+
+    setContextMenu(null)
+    setShiftForm(nextForm)
+    await runWithAssignmentWarnings(nextForm, async (overrideConflicts) => {
+      setIsLoading(true)
+      setError('')
+      setSuccess('')
+      try {
+        const pasted = await schedulesApi.createShift(schedule.id, {
+          jobCodeId: Number(nextForm.jobCodeId),
+          employeeId: nextForm.employeeId ? Number(nextForm.employeeId) : null,
+          shiftDate: nextForm.shiftDate,
+          startTime: nextForm.startTime,
+          endTime: nextForm.endTime,
+          overrideConflicts,
+        })
+        setLastPastedShift({ scheduleId: schedule.id, shiftId: pasted.id })
+        setSuccess('Shift pasted.')
+        await refreshScheduleAfterEdit()
+      } catch (err) {
+        setError(err.message || 'Unable to paste shift.')
+      } finally {
+        setIsLoading(false)
+      }
+    })
+  }
+
+  const undoLastPastedShift = async () => {
+    if (!lastPastedShift) return
+
+    setIsLoading(true)
+    setError('')
+    setSuccess('')
+    setContextMenu(null)
+
+    try {
+      await schedulesApi.deleteShift(lastPastedShift.scheduleId, lastPastedShift.shiftId)
+      setLastPastedShift(null)
+      setSelectedShiftId(null)
+      setSuccess('Pasted shift undone.')
+      await refreshScheduleAfterEdit()
+    } catch (err) {
+      setLastPastedShift(null)
+      setError(err.message || 'Unable to undo pasted shift.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleContextMenu = (event, nextContextMenu) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setContextMenu({
+      ...nextContextMenu,
+      x: event.clientX,
+      y: event.clientY,
+    })
+  }
+
+  const copyWeekToNextWeek = async () => {
+    if (!schedule) return
+
+    const targetStartDate = toIsoDate(addDays(new Date(`${schedule.startDate}T00:00:00`), 7))
+    if (!window.confirm(`Copy this schedule to ${formatWeekRange(targetStartDate)}? Any draft shifts already there will be replaced.`)) {
+      return
+    }
+
+    setIsLoading(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const copied = await schedulesApi.copy(schedule.id, targetStartDate)
+      setSchedule(copied)
+      setWeekStart(copied.startDate)
+      setSelectedWeek(copied.startDate)
+      setIsGenerated(true)
+      setIsPublished(false)
+      setSuccess('Schedule copied to next week.')
+      onScheduleChanged?.()
+    } catch (err) {
+      setError(err.message || 'Unable to copy schedule.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const scheduleShifts = schedule?.shifts || []
   const employees = [...new Set(shifts.map(shift => shift.employee))].sort()
+  const sortedTeamMembers = [...teamMembers].sort((a, b) => a.name.localeCompare(b.name))
 
   const roleOrder = ['Manager', 'Shift Lead', 'Cook', 'Host', 'Server', 'Bartender']
   const roles = [...new Set(shifts.map(shift => shift.role))].sort((a, b) => roleOrder.indexOf(a) - roleOrder.indexOf(b))
@@ -384,6 +850,51 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
       loadGenerationInputs(selectedWeek)
     }
   }, [isGenerated, loadGenerationInputs, role, selectedWeek])
+
+  useEffect(() => {
+    if (isGenerated && role === 'manager') {
+      loadEditingInputs()
+    }
+  }, [isGenerated, loadEditingInputs, role])
+
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null)
+    window.addEventListener('click', handleClick)
+    return () => window.removeEventListener('click', handleClick)
+  }, [])
+
+  useEffect(() => {
+      const handleKeyDown = (event) => {
+        if (role !== 'manager' || isPublished || showShiftModal || pendingWarningAction) return
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+        if (lastPastedShift) {
+          event.preventDefault()
+          undoLastPastedShift()
+        }
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c') {
+        const selectedShift = scheduleShifts.find(shift => shift.id === selectedShiftId)
+        if (selectedShift) {
+          event.preventDefault()
+          copyShift(selectedShift)
+        }
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'v') {
+        if (copiedShift && selectedCell) {
+          event.preventDefault()
+          pasteShift(selectedCell.employeeId, selectedCell.shiftDate)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  // Keyboard paste/undo intentionally call the latest helpers from the current render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [copiedShift, isPublished, lastPastedShift, pendingWarningAction, role, scheduleShifts, selectedCell, selectedShiftId, showShiftModal])
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -634,6 +1145,20 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
                 {!isPublished && (
                   <>
                     <button
+                      onClick={() => openCreateShift(null, weekStart)}
+                      disabled={isLoading}
+                      className="px-5 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60 text-sm font-semibold transition-colors"
+                    >
+                      New Shift
+                    </button>
+                    <button
+                      onClick={copyWeekToNextWeek}
+                      disabled={isLoading || !schedule}
+                      className="px-5 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60 text-sm font-semibold transition-colors"
+                    >
+                      Copy to Next Week
+                    </button>
+                    <button
                       onClick={handleRegenerateSetup}
                       disabled={isLoading}
                       className="px-5 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60 text-sm font-semibold transition-colors"
@@ -674,8 +1199,232 @@ function ScheduleGrid({ role, isGenerated, setIsGenerated, isPublished, setIsPub
           */}
 
           {error && <p className="text-sm text-red-600 dark:text-red-400 mb-4">{error}</p>}
-          {view === 'employee' && <EmployeeRowView employees={employees} shifts={shifts} />}
+          {success && <p className="text-sm text-green-700 dark:text-green-400 mb-4">{success}</p>}
+          {view === 'employee' && role === 'manager' && !isPublished && (
+            <ManagerEditableSchedule
+              employees={sortedTeamMembers}
+              shifts={shifts}
+              rawShifts={scheduleShifts}
+              weekStart={weekStart}
+              selectedShiftId={selectedShiftId}
+              selectedCell={selectedCell}
+              copiedShift={copiedShift}
+              onSelectShift={setSelectedShiftId}
+              onSelectCell={(employeeId, shiftDate) => setSelectedCell({ employeeId, shiftDate })}
+              onEditShift={openEditShift}
+              onCreateShift={openCreateShift}
+              onContextMenu={handleContextMenu}
+            />
+          )}
+          {view === 'employee' && (role !== 'manager' || isPublished) && <EmployeeRowView employees={employees} shifts={shifts} />}
           {view === 'role' && <RoleRowView roles={roles} shifts={shifts} />}
+        </div>
+      )}
+
+      {contextMenu && role === 'manager' && !isPublished && (
+        <div
+          className="fixed z-50 min-w-40 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={event => event.stopPropagation()}
+        >
+          {contextMenu.type === 'shift' && (
+            <>
+              <button
+                type="button"
+                onClick={() => openEditShift(contextMenu.shift)}
+                className="block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => copyShift(contextMenu.shift)}
+                className="block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                Copy
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteShift(contextMenu.shift?.id)}
+                className="block w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+              >
+                Delete
+              </button>
+            </>
+          )}
+          {contextMenu.type === 'cell' && (
+            <>
+              <button
+                type="button"
+                onClick={() => openCreateShift(contextMenu.employeeId, contextMenu.shiftDate)}
+                className="block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                New Shift
+              </button>
+              <button
+                type="button"
+                disabled={!copiedShift}
+                onClick={() => pasteShift(contextMenu.employeeId, contextMenu.shiftDate)}
+                className="block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+              >
+                Paste
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {showShiftModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-lg w-full mx-4">
+            <div className="flex items-start justify-between gap-4 mb-5">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  {shiftForm.id ? 'Edit Shift' : 'Create Shift'}
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {formatDateLabel(shiftForm.shiftDate || weekStart)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowShiftModal(false)}
+                className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleShiftSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">Job code</label>
+                  <select
+                    required
+                    value={shiftForm.jobCodeId}
+                    onChange={event => setShiftForm(current => ({ ...current, jobCodeId: event.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">Select job code</option>
+                    {jobCodes.map(jobCode => <option key={jobCode.id} value={jobCode.id}>{jobCode.name}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">Employee</label>
+                  <select
+                    value={shiftForm.employeeId}
+                    onChange={event => setShiftForm(current => ({ ...current, employeeId: event.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">Unassigned</option>
+                    {sortedTeamMembers.map(employee => <option key={employee.id} value={employee.id}>{employee.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={shiftForm.shiftDate}
+                    onChange={event => setShiftForm(current => ({ ...current, shiftDate: event.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">Start</label>
+                  <input
+                    type="time"
+                    required
+                    value={shiftForm.startTime}
+                    onChange={event => setShiftForm(current => ({ ...current, startTime: event.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">End</label>
+                  <input
+                    type="time"
+                    required
+                    value={shiftForm.endTime}
+                    onChange={event => setShiftForm(current => ({ ...current, endTime: event.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-between gap-3 pt-2">
+                <div>
+                  {shiftForm.id && (
+                    <button
+                      type="button"
+                      onClick={() => deleteShift(shiftForm.id)}
+                      disabled={isLoading}
+                      className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 disabled:bg-red-700 disabled:opacity-70 text-white text-sm font-semibold transition-colors"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowShiftModal(false)}
+                    disabled={isLoading}
+                    className="px-5 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="px-5 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-green-700 disabled:opacity-70 text-white text-sm font-semibold transition-colors"
+                  >
+                    {isLoading ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {pendingWarningAction && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Assignment Warning</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Review these issues before assigning the shift.
+            </p>
+            <ul className="space-y-2 mb-6">
+              {pendingWarningAction.warnings.map(warning => (
+                <li key={warning} className="text-sm text-gray-700 dark:text-gray-200">• {warning}</li>
+              ))}
+            </ul>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setPendingWarningAction(null)}
+                className="px-5 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Go Back
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const action = pendingWarningAction.action
+                  setPendingWarningAction(null)
+                  await action()
+                }}
+                className="px-5 py-2.5 rounded-lg bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-semibold transition-colors"
+              >
+                Override
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

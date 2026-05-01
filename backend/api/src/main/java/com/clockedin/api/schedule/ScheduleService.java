@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -112,7 +114,14 @@ public class ScheduleService {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
         JobCode jobCode = findJobCode(restaurantId, request.jobCodeId());
-        User employee = request.employeeId() == null ? null : findAssignableEmployee(restaurantId, request.employeeId(), jobCode.getId());
+        User employee = request.employeeId() == null
+                ? null
+                : findAssignableEmployee(
+                        restaurantId,
+                        request.employeeId(),
+                        jobCode.getId(),
+                        Boolean.TRUE.equals(request.overrideConflicts())
+                );
 
         Shift shift = new Shift();
         shift.setSchedule(schedule);
@@ -150,7 +159,12 @@ public class ScheduleService {
         validateTimes(shift.getStartTime(), shift.getEndTime());
 
         if (request.employeeId() != null) {
-            shift.setEmployee(findAssignableEmployee(restaurantId, request.employeeId(), shift.getJobCode().getId()));
+            shift.setEmployee(findAssignableEmployee(
+                    restaurantId,
+                    request.employeeId(),
+                    shift.getJobCode().getId(),
+                    Boolean.TRUE.equals(request.overrideConflicts())
+            ));
         }
         shift.setStatus(shift.getEmployee() == null ? ShiftStatus.UNASSIGNED : ShiftStatus.ASSIGNED);
         validateNoOverlap(restaurantId, shift, shift.getEmployee());
@@ -159,10 +173,16 @@ public class ScheduleService {
     }
 
     @Transactional
-    public ShiftResponse assignShift(Long restaurantId, Long scheduleId, Long shiftId, Long employeeId) {
+    public ShiftResponse assignShift(
+            Long restaurantId,
+            Long scheduleId,
+            Long shiftId,
+            Long employeeId,
+            boolean overrideConflicts
+    ) {
         findEditableSchedule(restaurantId, scheduleId);
         Shift shift = findShift(restaurantId, scheduleId, shiftId);
-        shift.setEmployee(findAssignableEmployee(restaurantId, employeeId, shift.getJobCode().getId()));
+        shift.setEmployee(findAssignableEmployee(restaurantId, employeeId, shift.getJobCode().getId(), overrideConflicts));
         shift.setStatus(ShiftStatus.ASSIGNED);
         validateNoOverlap(restaurantId, shift, shift.getEmployee());
         return toShiftResponse(shiftRepository.save(shift));
@@ -181,6 +201,59 @@ public class ScheduleService {
     public void deleteShift(Long restaurantId, Long scheduleId, Long shiftId) {
         findEditableSchedule(restaurantId, scheduleId);
         shiftRepository.delete(findShift(restaurantId, scheduleId, shiftId));
+    }
+
+    @Transactional
+    public ScheduleResponse copyWeek(Long restaurantId, Long sourceScheduleId, LocalDate targetStartDate) {
+        Schedule sourceSchedule = findSchedule(restaurantId, sourceScheduleId);
+        LocalDate targetEndDate = targetStartDate.plusDays(6);
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
+
+        Schedule targetSchedule = scheduleRepository
+                .findByRestaurantIdAndStartDateAndEndDate(restaurantId, targetStartDate, targetEndDate)
+                .orElseGet(() -> {
+                    Schedule schedule = new Schedule();
+                    schedule.setRestaurant(restaurant);
+                    schedule.setStartDate(targetStartDate);
+                    schedule.setEndDate(targetEndDate);
+                    schedule.setStatus(ScheduleStatus.DRAFT);
+                    return schedule;
+                });
+
+        if (targetSchedule.getStatus() == ScheduleStatus.PUBLISHED) {
+            throw new IllegalArgumentException("Published target schedules must be reopened before copying into them");
+        }
+
+        targetSchedule.setStatus(ScheduleStatus.DRAFT);
+        Schedule savedTarget = scheduleRepository.save(targetSchedule);
+        List<Shift> existingTargetShifts = shiftRepository.findByScheduleIdOrderByShiftDateAscStartTimeAscIdAsc(savedTarget.getId());
+        shiftRepository.deleteAll(existingTargetShifts);
+
+        long daysToShift = ChronoUnit.DAYS.between(sourceSchedule.getStartDate(), targetStartDate);
+        List<Shift> sourceShifts = shiftRepository.findByScheduleIdOrderByShiftDateAscStartTimeAscIdAsc(sourceScheduleId);
+        List<Shift> copiedShifts = new ArrayList<>();
+
+        for (Shift sourceShift : sourceShifts) {
+            Shift copied = new Shift();
+            copied.setSchedule(savedTarget);
+            copied.setRestaurant(restaurant);
+            copied.setJobCode(sourceShift.getJobCode());
+            copied.setShiftTemplate(sourceShift.getShiftTemplate());
+            copied.setEmployee(sourceShift.getEmployee());
+            copied.setShiftDate(sourceShift.getShiftDate().plusDays(daysToShift));
+            copied.setStartTime(sourceShift.getStartTime());
+            copied.setEndTime(sourceShift.getEndTime());
+            copied.setStatus(sourceShift.getEmployee() == null ? ShiftStatus.UNASSIGNED : ShiftStatus.ASSIGNED);
+            copied.setSource(ShiftSource.MANUAL);
+            copiedShifts.add(copied);
+        }
+
+        shiftRepository.saveAll(copiedShifts);
+        return toResponse(
+                savedTarget,
+                shiftRepository.findByScheduleIdOrderByShiftDateAscStartTimeAscIdAsc(savedTarget.getId())
+        );
     }
 
     public ScheduleResponse toResponse(Schedule schedule, List<Shift> shifts) {
@@ -241,14 +314,16 @@ public class ScheduleService {
                 .orElseThrow(() -> new EntityNotFoundException("Job code not found"));
     }
 
-    private User findAssignableEmployee(Long restaurantId, Long employeeId, Long jobCodeId) {
+    private User findAssignableEmployee(Long restaurantId, Long employeeId, Long jobCodeId, boolean overrideConflicts) {
         User employee = userRepository.findByIdAndRestaurantId(employeeId, restaurantId)
                 .filter(User::isEnabled)
                 .filter(user -> user.getRole() == Role.EMPLOYEE || user.getRole() == Role.MANAGER)
                 .orElseThrow(() -> new EntityNotFoundException("Employee not found"));
 
-        employeeJobCodeRepository.findByRestaurantIdAndEmployeeIdAndJobCodeId(restaurantId, employeeId, jobCodeId)
-                .orElseThrow(() -> new IllegalArgumentException("Employee is not assigned to this job code"));
+        if (!overrideConflicts) {
+            employeeJobCodeRepository.findByRestaurantIdAndEmployeeIdAndJobCodeId(restaurantId, employeeId, jobCodeId)
+                    .orElseThrow(() -> new IllegalArgumentException("Employee is not assigned to this job code"));
+        }
 
         return employee;
     }

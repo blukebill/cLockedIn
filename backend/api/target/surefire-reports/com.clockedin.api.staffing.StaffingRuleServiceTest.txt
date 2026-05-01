@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.clockedin.api.staffing.StaffingRuleServiceTest
 -------------------------------------------------------------------------------
-Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.016 s -- in com.clockedin.api.staffing.StaffingRuleServiceTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.020 s -- in com.clockedin.api.staffing.StaffingRuleServiceTest

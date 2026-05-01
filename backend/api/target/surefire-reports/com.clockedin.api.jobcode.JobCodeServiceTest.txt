@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.clockedin.api.jobcode.JobCodeServiceTest
 -------------------------------------------------------------------------------
-Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.034 s -- in com.clockedin.api.jobcode.JobCodeServiceTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.044 s -- in com.clockedin.api.jobcode.JobCodeServiceTest

@@ -1,0 +1,16 @@
+# cLockedIn dependency manifest
+# Format: kind:name[>=version]
+#
+# system entries are local tools the installer can check and, on supported
+# package managers, install.
+# project entries install repository dependencies from package manifests.
+
+system:java>=21
+system:maven
+system:docker
+system:docker-compose
+system:node
+system:npm
+
+project:frontend-npm
+project:backend-maven

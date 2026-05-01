@@ -109,6 +109,46 @@ export const schedulesApi = {
       method: 'POST',
     })
   },
+
+  copy(scheduleId, targetStartDate) {
+    return apiRequest(`/schedules/${scheduleId}/copy`, {
+      method: 'POST',
+      body: { targetStartDate },
+    })
+  },
+
+  createShift(scheduleId, shift) {
+    return apiRequest(`/schedules/${scheduleId}/shifts`, {
+      method: 'POST',
+      body: shift,
+    })
+  },
+
+  updateShift(scheduleId, shiftId, shift) {
+    return apiRequest(`/schedules/${scheduleId}/shifts/${shiftId}`, {
+      method: 'PATCH',
+      body: shift,
+    })
+  },
+
+  assignShift(scheduleId, shiftId, employeeId, overrideConflicts = false) {
+    return apiRequest(`/schedules/${scheduleId}/shifts/${shiftId}/assign`, {
+      method: 'PATCH',
+      body: { employeeId, overrideConflicts },
+    })
+  },
+
+  clearShiftAssignment(scheduleId, shiftId) {
+    return apiRequest(`/schedules/${scheduleId}/shifts/${shiftId}/assignment`, {
+      method: 'DELETE',
+    })
+  },
+
+  deleteShift(scheduleId, shiftId) {
+    return apiRequest(`/schedules/${scheduleId}/shifts/${shiftId}`, {
+      method: 'DELETE',
+    })
+  },
 }
 
 export const timeOffRequestsApi = {
@@ -306,6 +346,10 @@ export const staffingRulesApi = {
 }
 
 export const availabilityApi = {
+  list() {
+    return apiRequest('/availability')
+  },
+
   listEmployee(employeeId) {
     return apiRequest(`/availability/employee/${employeeId}`)
   },

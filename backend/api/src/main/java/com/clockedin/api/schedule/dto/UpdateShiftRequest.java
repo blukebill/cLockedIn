@@ -8,6 +8,7 @@ public record UpdateShiftRequest(
         Long employeeId,
         LocalDate shiftDate,
         LocalTime startTime,
-        LocalTime endTime
+        LocalTime endTime,
+        Boolean overrideConflicts
 ) {
 }
